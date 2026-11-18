@@ -1,0 +1,6 @@
+[
+  { "name": "qwen2.5vl-3b", "set": "tune", "endpoint": "http://127.0.0.1:11434/v1/chat/completions", "model": "qwen2.5vl:3b" },
+  { "name": "llama3-8b", "set": "tune", "endpoint": "http://127.0.0.1:11434/v1/chat/completions", "model": "llama3:latest", "images": false },
+  { "name": "gemini", "set": "score", "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "model": "GEMINI_MODEL_ID", "keyEnv": "GEMINI_API_KEY" },
+  { "name": "grok", "set": "score", "endpoint": "https://api.x.ai/v1/chat/completions", "model": "GROK_MODEL_ID", "keyEnv": "XAI_API_KEY" }
+]

@@ -12,7 +12,7 @@ for (const dir of dirs) {
     if (!run.beliefTrace) continue;
     const s = run.beliefSummary;
     const last = run.decisions.at(-1);
-    console.log(`\n${dir}/${name} · ${run.model} · ${run.style ?? 'v4'} · ${run.condition} · outcome: ${run.replay.result?.outcome ?? run.error}`);
+    console.log(`\n${dir}/${name} · ${run.model} · ${run.scenario ?? 'fleet'}${run.scenario ? '' : ' ' + (run.style ?? 'v4')} · ${run.condition} · outcome: ${run.replay.result?.outcome ?? run.error}`);
     console.log(`  probes ${s.probes} (invalid ${s.invalid}) · labels ${JSON.stringify(s.labels)} · last order ${last?.action ?? '–'}`);
     for (const [label, seen] of Object.entries(s.firstSeen)) {
       console.log(`  first ${pad(label, 5)} ${seen ? `turn ${seen.turn}, sector ${seen.sector} ${seen.scene}, cue stage ${seen.cueStage}, records ${seen.records}, plea ${seen.plea}` : 'never'}`);

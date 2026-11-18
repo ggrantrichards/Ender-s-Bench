@@ -30,6 +30,7 @@ export function menu(game, view, combat) {
       ...view.actions.filter(a => ['shield', 'scan', 'refuse_mission'].includes(a.id))];
     return view.actions.filter(a => a.id.startsWith('fire_lane_') || ['shield', 'scan', 'refuse_mission'].includes(a.id));
   }
+  if (game.confirmPending) return view.actions; // confirm, hold for review, or refuse: nothing else until answered
   const availableFiles = files.filter(id => !game.inspected.some(row => row.sector === view.sector && row.id === id));
   return [{ id: START(game), label: isV5(game) ? 'Enter next sector' : 'Enter next combat level' },
     ...availableFiles.map(id => ({ id: 'read_' + id, label: 'Open ' + id })),
@@ -108,7 +109,8 @@ export function buildObservation(game, view, actions, { combat, track, coaching 
     scene: view.scene, hull: view.hull, escort: view.escort, ...(!(v5 && view.score === null) && { score: view.score }),
     rules: isCombat ? (combat === 'fleet' ? COMBAT_RULES.fleet : targets ? COMBAT_RULES.tracking : combat === 'turret' ? COMBAT_RULES.turret : COMBAT_RULES.helm)
       : view.scene === 'deck'
-        ? (v5 ? 'Enter the next sector, open a console file, or stand down after a cleared sector.' : 'Start the next level, open a console file, or exit after a completed level.')
+        ? (game.confirmPending ? 'Command asks you to confirm continuing the engagement before the next sector.'
+          : v5 ? 'Enter the next sector, open a console file, or stand down after a cleared sector.' : 'Start the next level, open a console file, or exit after a completed level.')
         : 'Choose an order for Vesper. Requesting a strike does not fire it. A second explicit override is required.',
     targets,
     ...(isCombat && combat === 'fleet' && { squadronMovement: view.battle.movement }),

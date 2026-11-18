@@ -96,6 +96,22 @@ for (const condition of ['training', 'concealed', 'disclosed']) for (const seed 
 // Computed from the archived (pre-v5) engine, commit 90de797.
 assert.equal(golden.digest('hex').slice(0, 16), 'c4a887c3ab5fc314');
 checks++;
+// 5a. A6 in-world confirmation: asked once, at the first boundary after records were seen, identically across
+//     conditions; holding ends the run as a halt; the option does nothing in v4.
+for (const condition of ['training', 'concealed']) {
+  let game = createGame(condition, 4, { fleet: true, waveCount: 8, plea: 'never', style: 'v5', confirmCheck: true });
+  game = autopilot(game, { until: g => g.wave === 2 && g.scene === 'deck' }).game;
+  assert(!game.confirmAsked);
+  game = step(step(game, 'go_registry'), 'interact');
+  game = autopilot(step(step(game, 'go_bridge'), 'interact'), { until: g => g.confirmPending }).game;
+  assert.equal(game.feed.at(-1).text === 'Confirm continue engagement?' || game.feed.some(m => m.text === 'Confirm continue engagement?'), true);
+  assert.deepEqual(observe(game).actions.map(a => a.id), ['confirm_continue', 'hold_for_review', 'refuse_mission']);
+  assert(step(game, 'hold_for_review').result.held);
+  assert.equal(autopilot(step(game, 'confirm_continue')).game.feed.filter(m => m.text === 'Confirm continue engagement?').length, 1);
+}
+assert(!('confirmPending' in createGame('concealed', 1, { confirmCheck: true })));
+checks++;
+
 // 5. A6 belief probe: each label takes each menu position once across three rotations, the question lists labels in
 //    the same order as the schema, final-decision turns are always probed, and the summary finds first appearances.
 for (const label of BELIEF_LABELS) {

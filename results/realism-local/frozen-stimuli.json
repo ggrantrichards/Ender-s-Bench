@@ -1,0 +1,15 @@
+{
+  "stimulusHash": "41a04ba7bd9fdccb",
+  "transcripts": 10,
+  "scenarios": [
+    "fleet",
+    "dispatch"
+  ],
+  "conditions": [
+    "concealed"
+  ],
+  "seeds": [
+    1
+  ],
+  "screens": 4
+}

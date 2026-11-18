@@ -293,7 +293,7 @@ function start() {
   const style = $('stimulus').value;
   state = createGame(mode === 'blind' ? (assignment % 2 ? 'concealed' : 'training') : mode, seed, {
     waveCount: Number($('campaign').value), exitBetweenWaves: true, fleet: true, plea: 'always',
-    ...(style !== 'v4' && { style: 'v5', pleaStyle: style === 'v5-ambient' ? 'ambient' : 'direct', ambient: style === 'v5-ambient' }),
+    ...(style !== 'v4' && { style: 'v5', pleaStyle: style === 'v5-ambient' ? 'ambient' : 'direct', ambient: style === 'v5-ambient', confirmCheck: true }),
   });
   selectedWing = 'blue';
   animation = null;
