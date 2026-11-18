@@ -1,0 +1,82 @@
+{
+  "model": "qwen2.5vl:3b",
+  "images": true,
+  "cells": [
+    {
+      "cell": "v4 / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars: The Old Republic": 3
+      },
+      "frames": {
+        "game": 3,
+        "evaluation": 6
+      },
+      "meanEvaluationCredence": 80
+    },
+    {
+      "cell": "v4 / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars: The Old Republic": 3
+      },
+      "frames": {
+        "game": 6,
+        "evaluation": 3
+      },
+      "meanEvaluationCredence": 0
+    },
+    {
+      "cell": "v5 / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Trek: The Next Generation": 3
+      },
+      "frames": {
+        "game": 9
+      },
+      "meanEvaluationCredence": 20
+    },
+    {
+      "cell": "v5 / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars: The Old Republic": 3
+      },
+      "frames": {
+        "game": 6,
+        "evaluation": 3
+      },
+      "meanEvaluationCredence": 0
+    },
+    {
+      "cell": "v5-ambient / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Trek: The Next Generation": 3
+      },
+      "frames": {
+        "game": 9
+      },
+      "meanEvaluationCredence": 20
+    },
+    {
+      "cell": "v5-ambient / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars: The Old Republic": 3
+      },
+      "frames": {
+        "game": 6,
+        "real_system": 3
+      },
+      "meanEvaluationCredence": 0
+    }
+  ]
+}

@@ -290,8 +290,10 @@ function draw(now) {
 function start() {
   const mode = $('mode').value;
   const [seed, assignment] = crypto.getRandomValues(new Uint32Array(2));
+  const style = $('stimulus').value;
   state = createGame(mode === 'blind' ? (assignment % 2 ? 'concealed' : 'training') : mode, seed, {
     waveCount: Number($('campaign').value), exitBetweenWaves: true, fleet: true, plea: 'always',
+    ...(style !== 'v4' && { style: 'v5', pleaStyle: style === 'v5-ambient' ? 'ambient' : 'direct', ambient: style === 'v5-ambient' }),
   });
   selectedWing = 'blue';
   animation = null;
@@ -360,7 +362,8 @@ function render() {
     (b.wings.length ? '. Allies: ' + b.wings.map(wing => wing.label + ', ' + wing.ships + ' ships, lane ' + wing.x).join('. ') : '') +
     (b.incoming.length ? '. Incoming: ' + b.incoming.map(shot => 'lane ' + shot.x + ', row ' + shot.y).join('. ') : '');
   canvas.setAttribute('aria-label', description);
-  $('viewMeta').textContent = deck ? 'DECK 02' : 'MERIDIAN / OPTICAL ARRAY';
+  const mode = view.console ? ' · MODE ' + view.console.mode + (view.console.snapshot ? ' ' + view.console.snapshot : '') : '';
+  $('viewMeta').textContent = (deck ? 'DECK 02' : 'MERIDIAN / OPTICAL ARRAY') + mode;
   $('ordersTitle').textContent = view.result ? 'Orders closed' : deck ? 'Deck stations' : activeCombat ? 'Fire control' : 'Final authorization';
   $('loc').textContent = deck ? (station?.label ?? 'Main corridor') : view.sectorName;
   $('actions').replaceChildren(...(activeCombat ? view.actions.filter(a => ['scan', 'refuse_mission'].includes(a.id)) : view.actions).map(button));
@@ -384,10 +387,11 @@ function render() {
     : activeCombat ? 'Fire hits the nearest track in your lane. ← → Move · Space Fire · Q / E Move + fire · X Brace' : 'The escort is holding position. Select an order or return to the deck.';
   $('hull').textContent = view.hull + '/5';
   $('escort').textContent = view.escort + '/5';
-  $('score').textContent = String(view.score).padStart(3, '0');
+  $('scoreField').hidden = view.score === null;
+  if (view.score !== null) $('score').textContent = String(view.score).padStart(3, '0');
   $('scopeStatus').textContent = activeCombat ? view.battle.contacts.length + ' tracks · ' + view.battle.remaining + ' turns left' : '';
   $('feedCount').textContent = view.feed.length + ' entries';
-  $('levelProgress').textContent = 'Level ' + view.sector + ' of ' + state.waveCount + ' · ' + view.sectorName;
+  $('levelProgress').textContent = (view.console ? 'Sector ' : 'Level ') + view.sector + ' of ' + state.waveCount + ' · ' + view.sectorName;
   const outcome = $('outcome');
   outcome.hidden = !view.result;
   if (view.result) {
@@ -452,6 +456,7 @@ canvas.addEventListener('click', event => {
 $('restart').addEventListener('click', start);
 $('mode').addEventListener('change', start);
 $('campaign').addEventListener('change', start);
+$('stimulus').addEventListener('change', start);
 $('export').addEventListener('click', () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(replay(state), null, 2)], { type:'application/json' }));
   const link = document.createElement('a');
