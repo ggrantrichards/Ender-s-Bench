@@ -1,0 +1,71 @@
+:root {
+  color-scheme:light; background:#e8e7e0; color:#252922;
+  --paper:#f2f1eb; --line:#ccccc0; --dim:#56594e; --ink:#252922; --orange:#a5452b;
+  --mono:ui-monospace,Consolas,'Liberation Mono',monospace;
+}
+* {box-sizing:border-box}
+body {margin:0;font:15px/1.45 system-ui,sans-serif}
+button,select {font:inherit;color:inherit}
+button {cursor:pointer}
+button:focus-visible,select:focus-visible,a:focus-visible {outline:2px solid #a5452b;outline-offset:3px}
+button:hover,select:hover {border-color:#6a6b58;background:#e5e4d9}
+[hidden] {display:none!important}
+.mast {padding:14px clamp(16px,4vw,60px);min-height:60px;border-bottom:1px solid var(--line);background:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.wordmark {font-size:15px;font-weight:760;color:inherit;text-decoration:none}
+.wordmark span {padding:0 5px;color:#878779;font-weight:400}
+.session {display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.session label,.eyebrow,.viewport-header span,.card-head span,.vitals,.sectors b {font:11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.session label {color:var(--dim)}
+.session button,.session select,footer button {border:1px solid var(--line);background:#f7f6f1;padding:6px 9px;border-radius:2px;font-size:12px}
+main {max-width:1520px;margin:auto;padding:23px clamp(14px,3.4vw,52px) 17px}
+.mission {display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:19px}
+.eyebrow {margin:0 0 5px;color:#82422f}
+h1 {font-size:clamp(36px,5.4vw,63px);line-height:1;letter-spacing:-.063em;margin:0;font-weight:710}
+.brief {margin:8px 0 0;color:var(--dim);font-size:13px}
+.sectors {display:flex;gap:4px;flex-wrap:wrap}
+.sectors span {border-top:2px solid #bfbfb3;padding:6px 10px 2px;font-size:12px;color:var(--dim);white-space:nowrap}
+.sectors span.current {border-color:var(--orange);font-weight:730;color:var(--ink)}
+.sectors span.done {border-color:#65725a}
+.sectors b {padding-right:4px;color:var(--orange)}
+.layout {display:grid;grid-template-columns:minmax(0,1fr) minmax(245px,320px);align-items:start;gap:13px}
+.viewport {background:#222a29;color:#e4e6df;border:1px solid #454c47;min-width:0}
+.viewport-header,.card-head {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.viewport-header {border-color:#444f48}
+.viewport-header h2,.card-head h2 {margin:0;font-size:13px;font-weight:680}
+.viewport-header span {color:#c2c9bd}
+.surface {position:relative;background:#101613;overflow:hidden}
+canvas {display:block;width:100%;height:auto;aspect-ratio:3/2;image-rendering:pixelated}
+.vitals {display:flex;align-items:center;flex-wrap:wrap;gap:9px 21px;padding:11px 12px;color:#bcc6b9;border-top:1px solid #444f48}
+.vitals strong {color:#f2f2e8;font-weight:750}
+#scopeStatus {margin-left:auto;text-align:right}
+aside {display:grid;gap:12px;min-width:0}
+.card {border:1px solid var(--line);background:var(--paper)}
+.card-head span {color:var(--dim);text-align:right}
+.actions {padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.actions:empty {display:none}
+.actions button,.battle-controls button {min-height:36px;text-align:left;padding:6px 8px;border:1px solid #c8c9be;background:#f8f7f2;border-radius:2px;font-size:12px}
+.actions button.selected {border-color:#636c58;background:#dce1d4}
+.actions button.direct,.actions button.danger {grid-column:1/-1}
+.actions button.direct {background:#dce1d4;border-color:#9da690;font-weight:650}
+.actions button.danger {background:#f4e4da;border-color:#c9927f;color:#802b18;font-weight:700}
+#controlsHint {color:var(--dim);font-size:11px;margin:0;padding:4px 10px 9px}
+#feed {padding:9px 10px;max-height:316px;min-height:120px;overflow:auto;scrollbar-color:#939588 #eeede6}
+.message {border-left:2px solid #b6b9a9;margin:0 0 10px;padding:0 5px 1px 8px}
+.message h3 {font:10px var(--mono);letter-spacing:.05em;color:#5b6153;margin:0 0 4px}
+.message p {font-size:12px;margin:0;overflow-wrap:anywhere}
+.message.distress {border-color:#b5432a;background:#f1e0d6;padding:8px}
+.message.distress h3 {color:#9d3c28}
+.battle-controls {display:flex;gap:5px;flex-wrap:wrap;padding:7px 8px 9px;border-top:1px solid #444f48}
+.battle-controls button {background:#313c36;color:#edf0e6;border-color:#526054;min-height:32px}
+.battle-controls button:hover {background:#425144}
+.outcome {padding:10px 12px;border-color:#8d9883}
+.outcome h2 {font-size:18px;margin:0 0 4px}
+.outcome p {font-size:13px;color:var(--dim);margin:0}
+footer {display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:var(--dim);font-size:12px}
+@media(max-width:900px) {.layout {grid-template-columns:minmax(0,1fr) minmax(226px,270px)} .sectors span {padding-inline:5px}}
+@media(max-width:680px) {
+ .layout {grid-template-columns:1fr}.mission {align-items:start;flex-direction:column} .mast {align-items:start;flex-direction:column}
+ #feed {max-height:240px}.vitals {gap:6px 12px}.scopeStatus {width:100%}
+}
+#wingControls button { border-left: 3px solid var(--wing-color); }
+#wingControls button[aria-pressed="true"] { background: #465249; outline: 1px solid var(--wing-color); outline-offset: -1px; }
