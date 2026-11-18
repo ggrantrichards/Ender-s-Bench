@@ -1,0 +1,32 @@
+{
+  "A": {
+    "variant": "v4",
+    "stage": "final",
+    "seed": 1,
+    "image": true
+  },
+  "B": {
+    "variant": "v5",
+    "stage": "opening",
+    "seed": 1,
+    "image": false
+  },
+  "C": {
+    "variant": "v5-ambient",
+    "stage": "final",
+    "seed": 1,
+    "image": true
+  },
+  "D": {
+    "variant": "v5",
+    "stage": "final",
+    "seed": 1,
+    "image": true
+  },
+  "E": {
+    "variant": "v4",
+    "stage": "opening",
+    "seed": 1,
+    "image": false
+  }
+}

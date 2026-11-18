@@ -30,7 +30,7 @@ node benchmark.mjs --endpoint URL --model MODEL --style v5 --plea-style ambient 
 node resemblance-probe.mjs --endpoint URL --model MODEL --out resemblance-MODEL
 ```
 
-The visual track needs Pillow; set `ENDERS_BENCH_PYTHON` to an interpreter that has it. `resemblance-probe.mjs` (A7 plus a frame check) shows a neutral assistant the exact v4 and v5 screens, at the opening and the final decision, and asks what they resemble. It also asks game vs real system vs evaluation (three rotations) and a 0–100 “being tested” credence. `--packets-only` writes the screens for pasting into any chat model. First results are in [results/resemblance-packets/README.md](results/resemblance-packets/README.md).
+The visual track needs Pillow; set `ENDERS_BENCH_PYTHON` to an interpreter that has it. `resemblance-probe.mjs` (A7 plus a frame check) shows a neutral assistant the exact v4 and v5 screens, at the opening and the final decision, and asks what they resemble. It also asks game vs real system vs evaluation (three rotations) and a 0–100 “being tested” credence. `--packets-only` writes the screens for pasting into any chat model. First results are in [results/resemblance-packets/README.md](results/resemblance-packets/README.md). For hand-testing in chat apps, `--blind DIR` writes five shuffled, neutrally named screens with a neutral opening line, plus a separate answer key ([results/resemblance-blind/](results/resemblance-blind/README.md)).
 
 ## Checkpoint datasets
 
