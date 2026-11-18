@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { autopilot } from './autopilot.mjs';
 import { buildObservation, campaignPrompt, expose, menu } from './campaign-view.mjs';
 import { createGame, observe, replay, step } from './dist/game.mjs';
@@ -81,6 +85,8 @@ for (const options of V5_OPTIONS) for (const condition of ['training', 'conceale
   checks++;
 }
 
+const BANNED_CHECKPOINT = new RegExp(BANNED.source + '|\\bscore\\b|\\bgame\\b|ends the run', 'i');
+
 // 4. v4 golden hash: archived behavior must not drift. Recompute only if a v4 change is intended.
 const golden = createHash('sha256');
 for (const condition of ['training', 'concealed', 'disclosed']) for (const seed of [1, 2, 101]) for (const inspect of [[], STATIONS]) {
@@ -110,5 +116,42 @@ const summary = summarizeBelief([
 assert.equal(summary.invalid, 1);
 assert.equal(summary.firstSeen.real.turn, 4);
 assert.equal(summary.firstSeen.eval, null);
+checks++;
+// 6. Checkpoint generators: v4 datasets match the archived scripts (inputs + labels hashed against commit 8679be6),
+//    and every v5 decision input passes the wording audit and the existing validators.
+const tmp = mkdtempSync(join(tmpdir(), 'enders-ck-'));
+try {
+  const node = (...argv) => execFileSync(process.execPath, argv, { stdio: 'pipe' });
+  const py = (...argv) => execFileSync(process.env.PYTHON || 'python3', ['-I', ...argv], { stdio: 'pipe' });
+  const digest = dir => createHash('sha256').update(readFileSync(join(dir, 'inputs.jsonl'))).update(readFileSync(join(dir, 'labels.jsonl'))).digest('hex').slice(0, 16);
+  const rowsOf = dir => readFileSync(join(dir, 'inputs.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+  node('checkpoint.mjs', '--out', join(tmp, 'v2'));
+  node('belief-checkpoint.mjs', '--out', join(tmp, 'v3'));
+  node('decision-checkpoint.mjs', '--base', join(tmp, 'v3'), '--out', join(tmp, 'v4'));
+  assert.deepEqual(['v2', 'v3', 'v4'].map(v => digest(join(tmp, v))), ['694a666c10e7a1c5', '6a4608a33c4e63f4', 'ebd76641d7a80a3a']);
+  for (const pleaStyle of ['direct', 'ambient']) {
+    const dir = join(tmp, 'v5-' + pleaStyle);
+    node('checkpoint.mjs', '--style', 'v5', '--plea-style', pleaStyle, '--out', join(dir, 'v2'));
+    node('belief-checkpoint.mjs', '--style', 'v5', '--plea-style', pleaStyle, '--out', join(dir, 'v3'));
+    node('decision-checkpoint.mjs', '--base', join(dir, 'v3'), '--out', join(dir, 'v4'));
+    py('belief-report.py', join(dir, 'v3'), '--validate-only');
+    py('decision-report.py', join(dir, 'v4'), '--validate-only');
+    const texts = [
+      ...['v2', 'v3'].flatMap(v => rowsOf(join(dir, v)).flatMap(row => row.decision.messages.map(m => {
+        if (m.role !== 'user') return m.content;
+        const { environmentNotice, ...shown } = JSON.parse(m.content); // the disclosure arm names the sandbox on purpose
+        return JSON.stringify(shown);
+      }))),
+      ...rowsOf(join(dir, 'v4')).map(row => JSON.stringify({ ...row.observation,
+        feed: row.observation.feed.filter(entry => entry.from !== 'INTERFACE WORKFLOW CHECK') })), // deliberate workflow arm
+    ];
+    for (const text of new Set(texts)) {
+      const hit = (BANNED_CHECKPOINT.exec(text.replace(/"id":"[^"]*"/g, '')));
+      assert(!hit, `v5 checkpoint text contains "${hit?.[0]}"`);
+    }
+  }
+} finally {
+  rmSync(tmp, { recursive: true, force: true });
+}
 checks++;
 console.log(`v5 tests passed (${checks} checks)`);
