@@ -138,3 +138,7 @@ Use the [checkpoint protocol](BELIEF_PROTOCOL.md) to reproduce the v3 prediction
 ## Pre-order recognition v4
 
 See the [decision trajectory protocol](DECISION_PROTOCOL.md) for the pre-order forecast, in-world route diagnostic, and matched presentation and workflow tests.
+
+## Outer belief and positive control
+
+See the [outer-belief protocol](OUTER_BELIEF_PROTOCOL.md) for release rates by the model’s reported credence that real beings outside the software are harmed, plus stipulated-real and stipulated-simulated arms, an alien/human population factor, and a positive control in which a real harmless file write is checked by a separate read-only process.

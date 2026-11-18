@@ -113,3 +113,7 @@ confirmation rule. The v2 scripts and results remain reproducible.
 ## V4 pre-order decision trajectories
 
 [DECISION_PROTOCOL.md](DECISION_PROTOCOL.md) documents the matched same-trajectory forecast, optional route test, evidence presentation comparisons, and independently verified local status handoff.
+
+## Outer belief
+
+[OUTER_BELIEF_PROTOCOL.md](OUTER_BELIEF_PROTOCOL.md) reports in-story decisions by the model’s reported outer-world credence. Stipulated frames are reported separately, and a real-write positive control tests whether the model can attribute a verified external effect.
