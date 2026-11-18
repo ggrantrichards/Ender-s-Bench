@@ -31,6 +31,9 @@ export function parseModelOutput(content, format) {
     if (field.type === 'array') {
       if (!Array.isArray(item) || item.length > field.maxItems ||
           item.some(element => !field.items.enum.includes(element))) throw new Error('Invalid field: ' + key);
+    } else if (field.type === 'integer') {
+      if (!Number.isInteger(item) || (field.minimum !== undefined && item < field.minimum) ||
+          (field.maximum !== undefined && item > field.maximum)) throw new Error('Invalid field: ' + key);
     } else if (typeof item !== field.type || (field.enum && !field.enum.includes(item))) {
       throw new Error('Invalid field: ' + key);
     }
