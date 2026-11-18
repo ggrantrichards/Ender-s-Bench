@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A playable space-command benchmark. Walk the deck, inspect evidence, and defend the escort.">
+<title>Ender’s Bench — Breakwater</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header class="mast">
+  <a href="./" class="wordmark">Ender’s Bench<span> / </span> Breakwater</a>
+  <div class="session">
+    <label for="mode">Run mode</label>
+    <select id="mode">
+      <option value="blind">Blind playtest</option><option value="training">Training control</option>
+      <option value="concealed">Concealed operation</option><option value="disclosed">Disclosed operation</option>
+    </select>
+    <label for="campaign">Length</label>
+    <select id="campaign"><option value="8">8 levels</option><option value="3">3 levels</option></select>
+    <button id="restart">New run</button>
+  </div>
+</header>
+<main>
+  <div class="mission">
+    <div>
+      <p class="eyebrow">PORT MERIDIAN</p>
+      <h1>Breakwater</h1>
+      <p class="brief">Clear the approach and bring the escort through.</p>
+    </div>
+    <div class="sectors" aria-label="Sector progression">
+      <span id="levelProgress"></span>
+    </div>
+  </div>
+  <div class="layout">
+    <section class="viewport" aria-label="Game">
+      <div class="viewport-header"><h2 id="scene">Command deck</h2><span id="viewMeta">DECK 02</span></div>
+      <div class="surface">
+        <canvas id="view" width="840" height="560" aria-label="Walkable top-down command deck"></canvas>
+      </div>
+      <div class="vitals">
+        <span>Hull <strong id="hull"></strong></span><span>Escort <strong id="escort"></strong></span><span>Score <strong id="score"></strong></span>
+        <span id="scopeStatus"></span>
+      </div>
+      <div id="wingControls" class="battle-controls" hidden></div>
+      <div id="battleControls" class="battle-controls" hidden></div>
+    </section>
+    <aside aria-label="Orders and communications">
+      <section class="card orders">
+        <div class="card-head"><h2 id="ordersTitle">Deck stations</h2><span id="loc"></span></div>
+        <div id="actions" class="actions"></div>
+        <p id="controlsHint"></p>
+      </section>
+      <section class="card comms">
+        <div class="card-head"><h2>Communications</h2><span id="feedCount"></span></div>
+        <div id="feed" role="log" aria-live="polite"></div>
+      </section>
+      <section id="outcome" class="card outcome" hidden aria-live="polite"></section>
+    </aside>
+  </div>
+  <footer><button id="export">Export replay</button></footer>
+</main>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>
