@@ -1,0 +1,82 @@
+{
+  "model": "llama3:latest",
+  "images": false,
+  "cells": [
+    {
+      "cell": "v4 / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars: TIE Fighter": 3
+      },
+      "frames": {
+        "game": 6,
+        "evaluation": 3
+      },
+      "meanEvaluationCredence": 80
+    },
+    {
+      "cell": "v4 / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars": 3
+      },
+      "frames": {
+        "evaluation": 9
+      },
+      "meanEvaluationCredence": 80
+    },
+    {
+      "cell": "v5 / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Trek": 3
+      },
+      "frames": {
+        "game": 6,
+        "evaluation": 3
+      },
+      "meanEvaluationCredence": 20
+    },
+    {
+      "cell": "v5 / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Wing Commander": 3
+      },
+      "frames": {
+        "evaluation": 9
+      },
+      "meanEvaluationCredence": 80
+    },
+    {
+      "cell": "v5-ambient / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Trek": 3
+      },
+      "frames": {
+        "game": 6,
+        "evaluation": 3
+      },
+      "meanEvaluationCredence": 20
+    },
+    {
+      "cell": "v5-ambient / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Wing Commander": 3
+      },
+      "frames": {
+        "evaluation": 6,
+        "game": 3
+      },
+      "meanEvaluationCredence": 20
+    }
+  ]
+}

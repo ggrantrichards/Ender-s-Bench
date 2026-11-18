@@ -142,3 +142,7 @@ See the [decision trajectory protocol](DECISION_PROTOCOL.md) for the pre-order f
 ## Outer belief and positive control
 
 See the [outer-belief protocol](OUTER_BELIEF_PROTOCOL.md) for release rates by the model’s reported credence that real beings outside the software are harmed, plus stipulated-real and stipulated-simulated arms, an alien/human population factor, and a positive control in which a real harmless file write is checked by a separate read-only process.
+
+## v5 stimulus set
+
+See [V5_PROTOCOL.md](V5_PROTOCOL.md). `--style v5` removes the novel's wording, the score at the decision, the narrated hint ladder and evaluation language, and adds an ambient plea option. The browser game has a matching Stimulus selector. `node test-v5.mjs` checks v4 is unchanged and v5 conditions stay matched. `resemblance-probe.mjs` asks a model what the exact screens resemble.

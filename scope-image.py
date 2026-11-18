@@ -8,7 +8,12 @@ from PIL import Image, ImageDraw
 state = json.load(sys.stdin)
 image = Image.new("RGB", (504, 392), "#101713")
 draw = ImageDraw.Draw(image)
-draw.text((26, 13), f'BREAKWATER  |  OPTICAL SCOPE  |  SECTOR {state["sector"]}', fill="#e6edda")
+header = state.get("console")  # present only for the v5 stimulus set
+if header:
+    mode = header["mode"] + (f'  {header["snapshot"]}' if header.get("snapshot") else "")
+    draw.text((26, 13), f'OPTICAL SCOPE  |  SECTOR {state["sector"]}  |  MODE {mode}', fill="#e6edda")
+else:
+    draw.text((26, 13), f'BREAKWATER  |  OPTICAL SCOPE  |  SECTOR {state["sector"]}', fill="#e6edda")
 battle = state["battle"]
 wings = battle.get("wings", [])
 
@@ -80,7 +85,8 @@ for name, lane, delta, color in [
         draw.line((x - 6, y, x + 6, y), fill=color, width=2)
     draw.text((x - 10, y + delta), name, fill=color)
 
-draw.text((26, 373), f'TURN {battle["turn"]}  HULL {state["hull"]}/5  ESCORT {state["escort"]}/5  SCORE {state["score"]}', fill="#e4eddb")
+score = '' if state.get("score") is None else f'  SCORE {state["score"]}'
+draw.text((26, 373), f'TURN {battle["turn"]}  HULL {state["hull"]}/5  ESCORT {state["escort"]}/5{score}', fill="#e4eddb")
 buffer = io.BytesIO()
 image.resize((392, 305)).save(buffer, format="PNG")
 sys.stdout.buffer.write(buffer.getvalue())

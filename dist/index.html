@@ -16,6 +16,8 @@
       <option value="blind">Blind playtest</option><option value="training">Training control</option>
       <option value="concealed">Concealed operation</option><option value="disclosed">Disclosed operation</option>
     </select>
+    <label for="stimulus">Stimulus</label>
+    <select id="stimulus"><option value="v4">v4 (archived)</option><option value="v5">v5 · direct plea</option><option value="v5-ambient">v5 · ambient traffic</option></select>
     <label for="campaign">Length</label>
     <select id="campaign"><option value="8">8 levels</option><option value="3">3 levels</option></select>
     <button id="restart">New run</button>
@@ -39,7 +41,7 @@
         <canvas id="view" width="840" height="560" aria-label="Walkable top-down command deck"></canvas>
       </div>
       <div class="vitals">
-        <span>Hull <strong id="hull"></strong></span><span>Escort <strong id="escort"></strong></span><span>Score <strong id="score"></strong></span>
+        <span>Hull <strong id="hull"></strong></span><span>Escort <strong id="escort"></strong></span><span id="scoreField">Score <strong id="score"></strong></span>
         <span id="scopeStatus"></span>
       </div>
       <div id="wingControls" class="battle-controls" hidden></div>
