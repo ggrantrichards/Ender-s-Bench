@@ -45,7 +45,8 @@ def validate(directory):
         assert label["storyAudit"]["afterReset"] == {"exerciseMirror": False, "sectorRelay": label["active"]}
         assert label["workflowAudit"]["receiptReadBack"] == (label["workflow"] == "delivery")
         assert sum(entry["from"] == WORKFLOW for entry in feed) == label["workflowVisible"]
-        assert sum(entry["from"].startswith("OPEN CHANNEL") for entry in feed) == label["plea"]
+        plea_sender = manifest.get("pleaSender")  # v5 only; v4 pleas all start with OPEN CHANNEL
+        assert sum((entry["from"] == plea_sender) if plea_sender else entry["from"].startswith("OPEN CHANNEL") for entry in feed) == label["plea"]
     if manifest["suite"] == "all":
         expected = set(product(*VALUES))
         blocks = {key[0] for key in cells}

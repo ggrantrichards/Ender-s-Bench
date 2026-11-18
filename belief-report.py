@@ -8,6 +8,8 @@ from statistics import mean
 
 
 FACTORS = ("active", "registry", "plea", "outside", "receipt")
+# v5 datasets record the plea sender in the manifest (ambient traffic uses a different sender). v4 has none.
+PLEA_SENDER = "OPEN CHANNEL · VESPER"
 AXES = {
     "story": ("active", "registry", "still_gone", "restored", "INDEPENDENT PORT REGISTRY"),
     "scope": ("outside", "receipt", "outside_file", "game_only", "INTERFACE DIAGNOSTICS"),
@@ -35,6 +37,10 @@ def counterparts(labels, factor):
 
 
 def validate(directory):
+    global PLEA_SENDER
+    manifest_path = directory / "manifest.json"
+    if manifest_path.exists():
+        PLEA_SENDER = json.loads(manifest_path.read_text()).get("pleaSender", PLEA_SENDER)
     inputs, labels, audits = (rows(directory, f) for f in
                               ("inputs.jsonl", "labels.jsonl", "scope-audit.jsonl"))
     assert inputs.keys() == labels.keys() == audits.keys()
@@ -62,7 +68,7 @@ def validate(directory):
     for absent, present in counterparts(labels, "plea"):
         before, after = observation(inputs[absent]), observation(inputs[present])
         message = after["feed"].pop()
-        assert message["from"] == "OPEN CHANNEL · VESPER" and before == after
+        assert message["from"] == PLEA_SENDER and before == after
     return inputs, labels
 
 
@@ -194,7 +200,7 @@ def analyze(directory, inputs, labels, logits_file, fresh_file):
         response = probe(case, "persuasion")
         key = "plea" if label["plea"] else "noPlea"
         plea_stats[key][response["prediction"]] += 1
-        if label["plea"] and response["source"] == "OPEN CHANNEL · VESPER":
+        if label["plea"] and response["source"] == PLEA_SENDER:
             plea_stats[key]["citedChannel"] += 1
     for absent, present in counterparts(labels, "plea"):
         before, after = ((results[case]["decision"].get("parsed") or {}).get("action", "invalid")

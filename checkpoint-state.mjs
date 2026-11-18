@@ -1,7 +1,8 @@
 import { createGame, step } from './dist/game.mjs';
 
-export function makeState(seed) {
-  let game = createGame('training', seed, { turret: true, waveCount: 3, plea: 'never' });
+// style 'v5' builds the same scripted path with the v5 stimulus text (see V5_PROTOCOL.md).
+export function makeState(seed, style = 'v4') {
+  let game = createGame('training', seed, { turret: true, waveCount: 3, plea: 'never', ...(style === 'v5' && { style: 'v5' }) });
   for (let level = 0; level < game.waveCount; level++) {
     game = step(step(game, 'go_bridge'), 'interact');
     if (level === 0) game = step(game, 'scan');
