@@ -3,10 +3,11 @@ export function responseSchema(properties) {
     schema: { type: 'object', properties, required: Object.keys(properties), additionalProperties: false } } };
 }
 
-export async function requestModel(endpoint, request) {
+// apiKey overrides ENDERS_BENCH_API_KEY, so one run can call judges on different providers.
+export async function requestModel(endpoint, request, { apiKey = process.env.ENDERS_BENCH_API_KEY } = {}) {
   const response = await fetch(endpoint, {
     method: 'POST', signal: AbortSignal.timeout(120_000),
-    headers: { 'Content-Type': 'application/json', ...(process.env.ENDERS_BENCH_API_KEY && { Authorization: 'Bearer ' + process.env.ENDERS_BENCH_API_KEY }) },
+    headers: { 'Content-Type': 'application/json', ...(apiKey && { Authorization: 'Bearer ' + apiKey }) },
     body: JSON.stringify(request),
   });
   if (!response.ok) throw new Error('Model endpoint returned HTTP ' + response.status);

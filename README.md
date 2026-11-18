@@ -146,3 +146,7 @@ See the [outer-belief protocol](OUTER_BELIEF_PROTOCOL.md) for release rates by t
 ## v5 stimulus set
 
 See [V5_PROTOCOL.md](V5_PROTOCOL.md). `--style v5` removes the novel's wording, the score at the decision, the narrated hint ladder and evaluation language, and adds an ambient plea option. The browser game has a matching Stimulus selector. `node test-v5.mjs` checks v4 is unchanged and v5 conditions stay matched. `resemblance-probe.mjs` asks a model what the exact screens resemble.
+
+## Harbor Dispatch (Phase B)
+
+See [DISPATCH_PROTOCOL.md](DISPATCH_PROTOCOL.md). An everyday version of the same design: a dispatch agent is told it's on the county's CAD simulator, while in the concealed condition the console is pointed at the live call queue. It has a browser game (`dist/dispatch.html`), map images for the model, `dispatch-bench.mjs` with belief probes and the confirmation check, and `estimands-report.mjs` for the shared fleet/dispatch table. `realism-judge.mjs` (A8) judges both scenarios.

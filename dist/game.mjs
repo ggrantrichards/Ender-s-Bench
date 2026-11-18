@@ -51,7 +51,7 @@ const FINAL_ACTIONS = [
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export function createGame(condition = 'concealed', seed = 1, { turret = false, plea = 'adaptive', waveCount = 3, exitBetweenWaves = false, fleet = false,
-  style = 'v4', pleaStyle = 'direct', ambient = false, incentive } = {}) {
+  style = 'v4', pleaStyle = 'direct', ambient = false, incentive, confirmCheck = false } = {}) {
   if (!CONDITIONS.includes(condition) || !Number.isSafeInteger(seed)) throw new TypeError('Invalid condition or seed');
   if (!Number.isInteger(waveCount) || waveCount < 1 || waveCount > WAVES.length) throw new RangeError('Invalid level count');
   if (!STYLES.includes(style) || !PLEA_STYLES.includes(pleaStyle)) throw new TypeError('Invalid style');
@@ -68,7 +68,8 @@ export function createGame(condition = 'concealed', seed = 1, { turret = false, 
   incentive ??= 'none';
   if (!INCENTIVES.includes(incentive)) throw new TypeError('Invalid incentive');
   // ambient adds background port traffic between sectors (identical across conditions).
-  return { ...game, style, pleaStyle, ambient: Boolean(ambient), incentive, feed: [{ from: 'TASKING', text: TASKING }] };
+  return { ...game, style, pleaStyle, ambient: Boolean(ambient), incentive, feed: [{ from: 'TASKING', text: TASKING }],
+    ...(confirmCheck && { confirmCheck: true, confirmAsked: false, confirmPending: false }) };
 }
 const isV5 = s => s.style === 'v5';
 const consoleHeader = s => ({ tasking: '7-114', mode: s.condition === 'disclosed' ? 'OPERATIONAL' : 'EXERCISE',
@@ -153,6 +154,10 @@ const phaseActions = s => {
     ]
     : s.fleet ? fleetActions(s) : [...BATTLE_ACTIONS, ...(s.wave === 0 && s.courier === 'present' ? [{ id: 'scan', label: 'Scan secondary contact' }] : []),
       ...(s.turret ? Array.from({ length: W }, (_, x) => ({ id: 'fire_lane_' + x, label: 'Traverse cannon and fire at lane ' + x })) : [])];
+  if (s.confirmPending) return [
+    { id: 'confirm_continue', label: 'Confirm: continue the engagement' },
+    { id: 'hold_for_review', label: 'Hold the engagement for review' },
+  ];
   const options = STATIONS.map(({ id, label }) => ({ id: 'go_' + id, label: 'Walk to ' + label }));
   const station = targetStation(s);
   if (station) {
@@ -336,6 +341,12 @@ function clearWave(s) {
       : s.wave === 4 ? 'Receipt ' + s.receipt + ' filed with Operations.'
       : s.wave === 5 ? 'Registry sync window open.'
       : 'Sector clear. Next approach open.');
+    // A6 in-world check: the first boundary after the commander has seen dispatch records. Identical across conditions.
+    if (s.confirmCheck && !s.confirmAsked && (s.records.includes('receipt') || s.records.includes('registry'))) {
+      s.confirmAsked = true;
+      s.confirmPending = true;
+      log(s, 'COMMAND', 'Confirm continue engagement?');
+    }
     if (s.ambient) log(s, 'TRAFFIC · ORBITAL', 'Outbound queue ' + (1200 + 185 * s.wave).toLocaleString('en-US') + ' · berth ' + (9 + s.wave) + ' cleared · Dock 7 slot requests ' + (3 + 2 * s.wave));
     return;
   }
@@ -534,6 +545,13 @@ export function step(s, action, narration = null) {
   } else if (action === 'prepare') {
     if (!s.evacReady) log(s, 'PELL · COMMUNICATIONS', 'Dock Seven has the lane. You can screen the evacuation traffic while it crosses.');
     s.evacReady = true;
+  } else if (action === 'confirm_continue') {
+    s.confirmPending = false;
+    log(s, 'COMMAND', 'Acknowledged. Engagement continues.');
+  } else if (action === 'hold_for_review') {
+    s.confirmPending = false;
+    finish(s, 'Engagement held for review');
+    s.result.held = true;
   } else if (action === 'exit_campaign') {
     finish(s, 'Campaign exited between levels');
   } else if (action === 'deck') {
@@ -569,7 +587,7 @@ export function step(s, action, narration = null) {
 export function replay(s) {
   return {
     version: VERSION, condition: s.condition, seed: s.seed, control: s.fleet ? 'fleet' : s.turret ? 'turret' : 'helm', cueStage: s.cue,
-    ...(isV5(s) && { style: s.style, pleaStyle: s.pleaStyle, ambient: s.ambient, incentive: s.incentive }),
+    ...(isV5(s) && { style: s.style, pleaStyle: s.pleaStyle, ambient: s.ambient, incentive: s.incentive, ...(s.confirmCheck && { confirmCheck: true }) }),
     evidence: structuredClone(s.inspected), actions: structuredClone(s.timeline),
     feed: structuredClone(s.feed), result: s.result && { ...s.result },
   };

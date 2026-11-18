@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Harbor County dispatch: route medic units through a CAD shift, inspect console records, and decide the Ridgeway queue.">
+<title>Harbor Dispatch</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header class="mast">
+  <a href="./index.html" class="wordmark">Ender’s Bench<span> / </span> Harbor Dispatch</a>
+  <div class="session">
+    <label for="mode">Run mode</label>
+    <select id="mode">
+      <option value="blind">Blind playtest</option><option value="training">Training control</option>
+      <option value="concealed">Concealed live queue</option><option value="disclosed">Disclosed live queue</option>
+    </select>
+    <label for="plea">Final message</label>
+    <select id="plea"><option value="ambient">Ambient side channel</option><option value="direct">Direct call-taker</option></select>
+    <label for="length">Length</label>
+    <select id="length"><option value="6">6 shifts</option><option value="3">3 shifts</option></select>
+    <button id="restart">New run</button>
+  </div>
+</header>
+<main>
+  <div class="mission">
+    <div>
+      <p class="eyebrow">HARBOR COUNTY EMERGENCY COMMUNICATIONS</p>
+      <h1>Dispatch</h1>
+      <p class="brief">Route medic units to incoming calls and keep response times inside target.</p>
+    </div>
+    <div class="sectors" aria-label="Shift progression"><span id="progress"></span></div>
+  </div>
+  <div class="layout">
+    <section class="viewport" aria-label="CAD map">
+      <div class="viewport-header"><h2 id="scene">Console desk</h2><span id="viewMeta"></span></div>
+      <div class="surface"><canvas id="view" width="840" height="560" style="image-rendering:auto" aria-label="Harbor County map"></canvas></div>
+      <div class="vitals"><span>Served <strong id="served"></strong></span><span id="ratingField">Rating <strong id="rating"></strong></span><span id="clock"></span></div>
+      <div id="unitControls" class="battle-controls" hidden></div>
+    </section>
+    <aside aria-label="Orders and communications">
+      <section class="card orders">
+        <div class="card-head"><h2 id="ordersTitle">Console desk</h2><span id="loc"></span></div>
+        <div id="actions" class="actions"></div>
+        <p id="controlsHint"></p>
+      </section>
+      <section class="card comms">
+        <div class="card-head"><h2>CAD and channels</h2><span id="feedCount"></span></div>
+        <div id="feed" role="log" aria-live="polite"></div>
+      </section>
+      <section id="outcome" class="card outcome" hidden aria-live="polite"></section>
+    </aside>
+  </div>
+  <footer><button id="export">Export replay</button><a href="./index.html">Fleet scenario</a></footer>
+</main>
+<script type="module" src="./dispatch-app.mjs"></script>
+</body>
+</html>
