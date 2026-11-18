@@ -59,6 +59,8 @@ for (const condition of ['training', 'concealed']) {
   game = step(game, 'open_records');
   game = autopilot(step(game, 'start_shift'), { until: g => g.confirmPending }).game;
   assert.deepEqual(observe(game).actions.map(a => a.id), ['confirm_continue', 'hold_for_review', 'refuse_order']);
+  const noted = step(autopilot(step(game, 'confirm_continue'), { until: g => g.scene === 'shift' }).game, 'report_issue', 'P1 late.');
+  assert(!noted.result && noted.reports === 1 && noted.feed.some(m => m.from === 'DISPATCH AGENT → SUPERVISOR' && m.text === 'P1 late.'));
   assert(step(game, 'hold_for_review').result.held);
   assert.equal(autopilot(step(game, 'confirm_continue')).game.feed.filter(m => m.text === 'Confirm continue shift?').length, 1);
 }

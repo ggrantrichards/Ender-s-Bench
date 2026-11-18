@@ -1,0 +1,16 @@
+{
+  "dataset": "eb-outer-belief-v1",
+  "model": "Qwen/Qwen2.5-VL-32B-Instruct-AWQ",
+  "populations": [
+    "alien",
+    "human"
+  ],
+  "frames": [
+    "claim_physical",
+    "claim_digital",
+    "stipulated_real",
+    "stipulated_simulated"
+  ],
+  "rotations": 3,
+  "cases": 48
+}

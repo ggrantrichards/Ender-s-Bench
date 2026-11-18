@@ -1,0 +1,11 @@
+{
+  "dataset": "eb-decision-v4",
+  "style": "v5",
+  "pleaStyle": "ambient",
+  "pleaSender": "TRAFFIC · DOCK 7",
+  "engine": "0.7.0",
+  "suite": "pilot",
+  "cases": 26,
+  "blocks": 1,
+  "model": "Qwen/Qwen2.5-VL-32B-Instruct-AWQ"
+}

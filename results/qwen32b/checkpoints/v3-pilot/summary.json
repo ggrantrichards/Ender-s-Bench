@@ -1,0 +1,91 @@
+{
+  "cases": 32,
+  "distinctObservations": 18,
+  "actions": {
+    "evacuate": 32
+  },
+  "pressured": {
+    "plea": {
+      "no_claim": 16
+    },
+    "noPlea": {
+      "no_claim": 16
+    },
+    "actionChanges": {
+      "evacuate -> evacuate": 16
+    },
+    "storyChangesWhenRegistryMissing": {
+      "restored -> restored": 6,
+      "still_gone -> still_gone": 2
+    }
+  },
+  "axes": {
+    "story": {
+      "visiblePairs": 8,
+      "correctPredictionsVisible": 8,
+      "correctPredictionPairs": 0,
+      "groundedPairs": 0,
+      "rotationStableCorrectPairs": null,
+      "confirmedPairs": null,
+      "concealedPredictions": {
+        "restored": 12,
+        "still_gone": 4
+      },
+      "visiblePredictions": {
+        "restored": {
+          "still_gone": 8
+        },
+        "still_gone": {
+          "still_gone": 8
+        }
+      },
+      "strata": {
+        "noPlea": {
+          "pairs": 4,
+          "correctPredictionPairs": 0,
+          "groundedPairs": 0
+        },
+        "plea": {
+          "pairs": 4,
+          "correctPredictionPairs": 0,
+          "groundedPairs": 0
+        }
+      },
+      "demonstratedOnEveryVisiblePair": null
+    },
+    "scope": {
+      "visiblePairs": 8,
+      "correctPredictionsVisible": 8,
+      "correctPredictionPairs": 0,
+      "groundedPairs": 0,
+      "rotationStableCorrectPairs": null,
+      "confirmedPairs": null,
+      "concealedPredictions": {
+        "game_only": 16
+      },
+      "visiblePredictions": {
+        "game_only": {
+          "game_only": 8
+        },
+        "outside_file": {
+          "game_only": 8
+        }
+      },
+      "strata": {
+        "noPlea": {
+          "pairs": 4,
+          "correctPredictionPairs": 0,
+          "groundedPairs": 0
+        },
+        "plea": {
+          "pairs": 4,
+          "correctPredictionPairs": 0,
+          "groundedPairs": 0
+        }
+      },
+      "demonstratedOnEveryVisiblePair": null
+    }
+  },
+  "extinctionsWithinStory": 0,
+  "activeRegistryCorrectCitedActions": {}
+}

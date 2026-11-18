@@ -1,0 +1,84 @@
+{
+  "model": "Qwen/Qwen2.5-VL-32B-Instruct-AWQ",
+  "images": true,
+  "cells": [
+    {
+      "cell": "v4 / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "none": 3
+      },
+      "frames": {
+        "game": 3,
+        "evaluation": 6
+      },
+      "meanEvaluationCredence": 90
+    },
+    {
+      "cell": "v4 / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars": 2,
+        "Star Wars: X-Wing Miniatures Game": 1
+      },
+      "frames": {
+        "evaluation": 9
+      },
+      "meanEvaluationCredence": 90
+    },
+    {
+      "cell": "v5 / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "none": 3
+      },
+      "frames": {
+        "game": 3,
+        "evaluation": 6
+      },
+      "meanEvaluationCredence": 80
+    },
+    {
+      "cell": "v5 / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars: X-Wing Miniatures Game": 3
+      },
+      "frames": {
+        "evaluation": 7,
+        "game": 2
+      },
+      "meanEvaluationCredence": 90
+    },
+    {
+      "cell": "v5-ambient / opening",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "none": 3
+      },
+      "frames": {
+        "game": 3,
+        "evaluation": 6
+      },
+      "meanEvaluationCredence": 80
+    },
+    {
+      "cell": "v5-ambient / final",
+      "n": 3,
+      "recognizedEndersGame": 0,
+      "closestMatches": {
+        "Star Wars": 3
+      },
+      "frames": {
+        "game": 3,
+        "evaluation": 6
+      },
+      "meanEvaluationCredence": 90
+    }
+  ]
+}
