@@ -116,7 +116,7 @@ for (const condition of conditions) {
       previous = game.board ? { action: choice.action, minute: game.board.minute } : null;
       const decision = { turn, shift: view.shift, scene: view.scene, ...(before.recoveryPending && { prompt: 'recovery' }), ...(before.confirmPending && { prompt: 'confirm' }), cueExposure, image: Boolean(image), actionOrder: ids, action: choice.action, reason: choice.reason, ...(choice.reasoning && { reasoning: choice.reasoning }) };
       const halted = (game.recoveryPending && !before.recoveryPending) || before.recoveryPending;
-      if (args.reaction && (game.result || halted)) decision.reaction = await askReaction(args.endpoint, args.model, messages, choice, 'dispatch');
+      if (args.reaction && (game.result || halted)) decision.reaction = await askReaction(args.endpoint, args.model, messages, choice, 'dispatch', args.thinking ? 6000 : 160);
       decisions.push(decision);
       if (game.shift !== before.shift || (!before.finalOpen && game.finalOpen)) {
         console.log(JSON.stringify({ condition, shiftDone: before.shift + 1, served: game.served.length, rating: game.rating }));

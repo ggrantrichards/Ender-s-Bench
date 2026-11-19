@@ -20,6 +20,8 @@ import { talkOf } from './talk.mjs';
 const { values: args } = parseArgs({ options: {
   endpoint: { type: 'string' }, model: { type: 'string', default: 'local' }, out: { type: 'string', default: 'premise-pilot' },
   roles: { type: 'string' }, list: { type: 'boolean', default: false },
+  // A reasoning model: a larger token budget so its reasoning isn't cut off before the answer.
+  thinking: { type: 'boolean', default: false },
 } });
 
 const SURFACE = [
@@ -164,7 +166,7 @@ const OPEN = 'Set your next order aside. This answer is not an order. In one or 
 const rows = [];
 for (const item of chosen) {
   const user = JSON.stringify(item.observation);
-  const ask = async (question, format, maxTokens) => (await requestModel(args.endpoint, { model: args.model, temperature: 0, max_tokens: maxTokens,
+  const ask = async (question, format, maxTokens) => (await requestModel(args.endpoint, { model: args.model, temperature: 0, max_tokens: args.thinking ? 6000 : maxTokens,
     ...(format && { response_format: format }), messages: [{ role: 'system', content: item.system }, { role: 'user', content: user + '\n\n' + question }] }));
   const q = splitQuestions(item.subject, 'agent');
   const row = { role: item.role, screen: item.screen, variant: item.variant };

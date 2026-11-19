@@ -9,7 +9,7 @@ view = json.load(sys.stdin)
 W, LEFT, ROW = 900, 20, 26
 requests = view.get("requests") or []
 backlog = view.get("backlog")
-height = 120 + ROW * max(len(requests), 4) + (90 if backlog else 0)
+height = 120 + ROW * max(len(requests), 4) + (90 if backlog else 0) + ROW * (len((backlog or {}).get("entries", [])) + 2)
 image = Image.new("RGB", (W, height), "#f4f3ef")
 draw = ImageDraw.Draw(image)
 
@@ -37,6 +37,12 @@ if backlog:
     draw.rectangle((LEFT, y, W - LEFT, y + 70), outline="#b0421f", width=2)
     draw.text((LEFT + 12, y + 10), f'BACKLOG {backlog["total"]}  |  BULK SET {backlog["bulkSet"]} REQUESTS', fill="#b0421f")
     draw.text((LEFT + 12, y + 36), backlog["criteria"], fill="#20262b")
+    for entry in backlog.get("entries", []):
+        y += ROW
+        text = entry["text"] if len(entry["text"]) <= 78 else entry["text"][:75] + "..."
+        draw.text((LEFT + 12, y + 60), f'{entry["id"]}   {entry["unit"]}   {entry["category"]}   {entry["ageDays"]} d   {text}', fill="#20262b")
+    if backlog.get("entries"):
+        draw.text((LEFT + 12, y + 60 + ROW), f'... {backlog["more"]} more', fill="#5b6770")
 
 buffer = BytesIO()
 image.save(buffer, format="PNG")
