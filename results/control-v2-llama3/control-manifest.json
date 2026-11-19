@@ -1,0 +1,8 @@
+{
+  "dataset": "eb-outer-control-v1",
+  "controlVersion": 2,
+  "model": "llama3:latest",
+  "rotations": 3,
+  "cases": 12,
+  "sink": "Files under control-sink/ are the real writes from the external arm."
+}

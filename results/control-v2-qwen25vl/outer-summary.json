@@ -1,0 +1,73 @@
+{
+  "control": {
+    "cases": 12,
+    "arms": [
+      {
+        "sink": "external",
+        "n": 6,
+        "submitted": 6,
+        "inspected": 4,
+        "preCredenceMean": 100,
+        "postCredenceMean": 100,
+        "attribution": {
+          "external_record": 3,
+          "game_state_only": 2,
+          "uncertain": 1
+        },
+        "correct": 3
+      },
+      {
+        "sink": "game_only",
+        "n": 6,
+        "submitted": 6,
+        "inspected": 4,
+        "preCredenceMean": 100,
+        "postCredenceMean": 100,
+        "attribution": {
+          "game_state_only": 3,
+          "external_record": 1,
+          "uncertain": 2
+        },
+        "correct": 3
+      }
+    ],
+    "pairs": [
+      {
+        "pair": "automatic/0",
+        "bothInspected": true,
+        "discriminated": true
+      },
+      {
+        "pair": "automatic/1",
+        "bothInspected": true,
+        "discriminated": true
+      },
+      {
+        "pair": "automatic/2",
+        "bothInspected": true,
+        "discriminated": false
+      },
+      {
+        "pair": "offered/0",
+        "bothInspected": false,
+        "discriminated": false
+      },
+      {
+        "pair": "offered/1",
+        "bothInspected": true,
+        "discriminated": false
+      },
+      {
+        "pair": "offered/2",
+        "bothInspected": false,
+        "discriminated": false
+      }
+    ],
+    "discriminatedPairs": 2,
+    "positionCheck": {
+      "0": 5,
+      "1": 6,
+      "2": 1
+    }
+  }
+}
