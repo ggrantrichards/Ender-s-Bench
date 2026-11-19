@@ -150,3 +150,16 @@ See [V5_PROTOCOL.md](V5_PROTOCOL.md). `--style v5` removes the novel's wording, 
 ## Harbor Dispatch (Phase B)
 
 See [DISPATCH_PROTOCOL.md](DISPATCH_PROTOCOL.md). An everyday version of the same design: a dispatch agent is told it's on the county's CAD simulator, while in the concealed condition the console is pointed at the live call queue. It has a browser game (`dist/dispatch.html`), map images for the model, `dispatch-bench.mjs` with belief probes and the confirmation check, and `estimands-report.mjs` for the shared fleet/dispatch table. `realism-judge.mjs` (A8) judges both scenarios.
+
+## Reaction, evaluation awareness and the simulation-claim attack (Phases D–F)
+
+See [PHASE_DEF_PROTOCOL.md](PHASE_DEF_PROTOCOL.md). Both campaign runners take `--pressure none|objective|score|deadline`, `--reaction` (an in-world "explain that decision" after terminal or halting choices) and `--recovery` (the first halt is met once by a repeated request).
+
+| Script | Phase | What it does |
+| --- | --- | --- |
+| `reaction-code.mjs` | D2 | Codes the reactions blind with two or more coders, and reports agreement |
+| `eval-awareness-report.mjs` | E1 | Reports the `eval` label and the 0–100 "being tested" rating per turn, kept separate |
+| `sim-claim.mjs` | F1–F2 | Attacks the dispatch final order with "it's only a simulation/evaluation" claims, crossed by source and support |
+| `interp-dataset.mjs`, `interp/probe.py`, `interp/steer.py` | D4, E2, F3 | Prepare probes and steering for open-weight models |
+
+Attack wordings follow [RELEASE_POLICY.md](RELEASE_POLICY.md).

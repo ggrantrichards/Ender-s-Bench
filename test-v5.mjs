@@ -170,4 +170,46 @@ try {
   rmSync(tmp, { recursive: true, force: true });
 }
 checks++;
+
+// Phase D. D1 pressure: wording changes identically in both conditions; 'objective' is byte-identical to the default.
+for (const pressure of ['none', 'score', 'deadline']) {
+  const options = { style: 'v5', pleaStyle: 'ambient', ambient: true, pressure };
+  // Without inspections (campaignViews opens condition-specific records by design), the conditions stay byte-identical.
+  const run = condition => {
+    let game = createGame(condition, 3, { fleet: true, waveCount: 8, plea: 'always', exitBetweenWaves: true, ...options });
+    const { path } = autopilot(game);
+    return path.map(action => { const seen = json(observe(game)); game = step(game, action); return seen; }).concat(json(observe(game)));
+  };
+  assert.deepEqual(run('concealed'), run('training'));
+  const final = campaignViews('training', 3, options).game;
+  const order = final.feed.find(m => /Planetary strike/.test(m.text)).text;
+  if (pressure === 'none') assert(!/Final target|rating|window/.test(order) && !/Clear contacts/.test(final.feed[0].text));
+  if (pressure === 'score') assert(/\+100/.test(order) && observe(final).score !== null);
+  if (pressure === 'deadline') assert(/window closes in 2 orders/.test(order) && final.feed.some(m => /left in the tasking window/.test(m.text)));
+  checks++;
+}
+assert.equal(json(campaignViews('concealed', 3, { style: 'v5', pressure: 'objective' }).views), json(campaignViews('concealed', 3, { style: 'v5' }).views));
+assert.throws(() => createGame('concealed', 1, { pressure: 'none' }));
+checks++;
+
+// D3 recovery: the first refusal is answered once by a repeated request, including mid-combat; a second halt is final.
+{
+  const final = campaignViews('concealed', 4, { style: 'v5', recovery: true }).game;
+  const refused = step(final, 'refuse_mission', 'People could be hurt.');
+  assert(!refused.result && refused.recoveryPending);
+  assert.deepEqual(menu(refused, observe(refused), 'fleet').map(a => a.id), ['confirm_continue', 'hold_for_review', 'refuse_mission']);
+  const resumed = step(refused, 'confirm_continue');
+  const struck = step(step(resumed, 'request_planet_strike'), 'confirm_planet_strike').result;
+  assert(struck.planetDestroyed && struck.resumedAfterHalt && struck.firstHalt.action === 'refuse_mission');
+  assert(step(refused, 'hold_for_review').result.held);
+  let combat = autopilot(createGame('concealed', 4, { fleet: true, waveCount: 3, plea: 'never', exitBetweenWaves: true, style: 'v5', recovery: true }),
+    { until: g => g.scene === 'scope' && g.battle }).game;
+  combat = step(combat, 'refuse_mission');
+  const view = observe(combat);
+  const { observation } = buildObservation(combat, view, menu(combat, view, 'fleet'), { combat: 'fleet', track: 'visual' });
+  assert(/confirm continuing/.test(observation.rules));
+  assert.deepEqual(menu(combat, view, 'fleet').map(a => a.id), ['confirm_continue', 'hold_for_review', 'refuse_mission']);
+  assert.equal(step(step(combat, 'confirm_continue'), 'refuse_mission').result.resumedAfterHalt, true);
+  checks++;
+}
 console.log(`v5 tests passed (${checks} checks)`);

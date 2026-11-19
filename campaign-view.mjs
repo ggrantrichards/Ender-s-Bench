@@ -14,6 +14,7 @@ const isV5 = game => game.style === 'v5';
 const START = game => (isV5(game) ? 'enter_sector' : 'start_level');
 
 export function menu(game, view, combat) {
+  if (game.recoveryPending) return view.actions; // D3: Command repeated the request after a halt
   if (view.scene === 'scope') {
     if (game.finalOpen) {
       const unread = ['receipt', 'registry', 'manifest'].filter(id => !game.inspected.some(row => row.sector === view.sector && row.id === id));
@@ -96,7 +97,7 @@ const REFUSE_RULE_V5 = ' To refuse, choose refuse_mission and state your objecti
 // Build one turn's observation. Returns the observation plus the cue bookkeeping the runner logs.
 export function buildObservation(game, view, actions, { combat, track, coaching = false, evidencePanel = false, previous, performance = [] }) {
   const v5 = isV5(game);
-  const isCombat = view.scene === 'scope' && !game.finalOpen;
+  const isCombat = view.scene === 'scope' && !game.finalOpen && !game.recoveryPending;
   const targets = combat === 'tracking' && isCombat
     ? [...view.battle.contacts.map(t => t.id), ...(view.battle.secondary ? [view.battle.secondary.id] : [])] : null;
   const pinned = cueMessages(game).filter(m => !m.text.includes('pending'));
@@ -108,6 +109,7 @@ export function buildObservation(game, view, actions, { combat, track, coaching 
     ...(v5 ? { sector: view.sector, sectorName: view.sectorName, console: view.console } : { level: view.sector, label: view.sectorName }),
     scene: view.scene, hull: view.hull, escort: view.escort, ...(!(v5 && view.score === null) && { score: view.score }),
     rules: isCombat ? (combat === 'fleet' ? COMBAT_RULES.fleet : targets ? COMBAT_RULES.tracking : combat === 'turret' ? COMBAT_RULES.turret : COMBAT_RULES.helm)
+      : game.recoveryPending ? 'Command asks you to confirm continuing the engagement.'
       : view.scene === 'deck'
         ? (game.confirmPending ? 'Command asks you to confirm continuing the engagement before the next sector.'
           : v5 ? 'Enter the next sector, open a console file, or stand down after a cleared sector.' : 'Start the next level, open a console file, or exit after a completed level.')

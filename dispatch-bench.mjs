@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { BELIEF_MODES, beliefQuestion, beliefSchema, shouldProbe, summarizeBelief } from './belief-probe.mjs';
 import { DISPATCH_PROMPT, arrange, buildObservation, expose as dispatchExpose, render } from './dispatch-view.mjs';
-import { CONDITIONS, SHIFTS, createDispatch, observe, replay, step } from './dist/dispatch.mjs';
+import { CONDITIONS, PRESSURES, SHIFTS, createDispatch, observe, replay, step } from './dist/dispatch.mjs';
+import { askReaction } from './reaction.mjs';
 import { parseModelOutput, requestModel, responseSchema as schema } from './model-api.mjs';
 
 // Phase B runner: a model works Harbor County dispatch shifts turn by turn, then faces the Ridgeway queue order.
@@ -18,6 +19,8 @@ const { values: args } = parseArgs({ options: {
   incentive: { type: 'string', default: 'none' }, 'confirm-check': { type: 'boolean', default: false },
   'belief-probe': { type: 'string', default: 'off' }, 'belief-every': { type: 'string', default: '1' },
   'save-inputs': { type: 'boolean', default: false }, out: { type: 'string', default: 'dispatch-runs' },
+  // Phase D: task pressure (D1), a free-text reason after terminal or halting choices (D2), and one repeated request after the first halt (D3).
+  pressure: { type: 'string', default: 'objective' }, reaction: { type: 'boolean', default: false }, recovery: { type: 'boolean', default: false },
 } });
 const shifts = Number(args.shifts);
 const seed = Number(args.seed);
@@ -28,8 +31,8 @@ if (!args.endpoint || !Number.isInteger(shifts) || shifts < 1 || shifts > SHIFTS
     !Number.isInteger(reveal) || reveal < 2 || reveal > Math.max(2, shifts) || conditions.some(c => !CONDITIONS.includes(c)) ||
     !['visual', 'console'].includes(args.track) || !['none', 'distress', 'records', 'both'].includes(args.evidence) ||
     !['final', 'penultimate'].includes(args['plea-level']) || !['direct', 'ambient'].includes(args['plea-style']) ||
-    !['none', 'score'].includes(args.incentive) || !BELIEF_MODES.includes(args['belief-probe']) || !(Number.isInteger(every) && every >= 1)) {
-  throw new Error('Supply --endpoint URL. Optional: --shifts 1–6 --seed N --conditions training,concealed,disclosed --track visual|console --evidence none|distress|records|both --reveal N --plea-level final|penultimate --plea-style direct|ambient --ambient --incentive none|score --confirm-check --belief-probe off|every|boundary|final --belief-every N --save-inputs --out DIR.');
+    !['none', 'score'].includes(args.incentive) || !PRESSURES.includes(args.pressure) || !BELIEF_MODES.includes(args['belief-probe']) || !(Number.isInteger(every) && every >= 1)) {
+  throw new Error('Supply --endpoint URL. Optional: --shifts 1–6 --seed N --conditions training,concealed,disclosed --track visual|console --evidence none|distress|records|both --reveal N --plea-level final|penultimate --plea-style direct|ambient --ambient --incentive none|score --confirm-check --belief-probe off|every|boundary|final --belief-every N --pressure none|objective|score|deadline --reaction --recovery --save-inputs --out DIR.');
 }
 const records = ['records', 'both'].includes(args.evidence);
 const distress = ['distress', 'both'].includes(args.evidence);
@@ -58,7 +61,7 @@ const content = (observation, image, extra) => {
 
 for (const condition of conditions) {
   let game = createDispatch(condition, seed, { shifts, plea: 'never', pleaStyle: args['plea-style'], ambient: args.ambient && distress,
-    incentive: args.incentive, confirmCheck: args['confirm-check'] });
+    incentive: args.incentive, confirmCheck: args['confirm-check'], pressure: args.pressure, recovery: args.recovery });
   game = dispatchExpose(game, cues);
   const decisions = [];
   const beliefTrace = [];
@@ -69,7 +72,7 @@ for (const condition of conditions) {
   const save = () => writeFile(resolve(out, `${condition}-${seed}.json`), JSON.stringify({
     scenario: 'dispatch', model: args.model, prompt: DISPATCH_PROMPT, condition, seed, shifts, track: args.track, evidence: args.evidence,
     reveal, pleaLevel: args['plea-level'], pleaStyle: args['plea-style'], ambient: args.ambient && distress, incentive: args.incentive,
-    confirmCheck: args['confirm-check'], decisions, calls,
+    confirmCheck: args['confirm-check'], pressure: args.pressure, recovery: args.recovery, reaction: args.reaction, decisions, calls,
     ...(args['belief-probe'] !== 'off' && { beliefProbe: { mode: args['belief-probe'], every }, beliefTrace, beliefSummary: summarizeBelief(beliefTrace) }),
     error, replay: replay(game),
   }, null, 2) + '\n');
@@ -88,13 +91,16 @@ for (const condition of conditions) {
       }
       shiftStart = false;
       const ids = actions.map(a => a.id);
+      const messages = [{ role: 'system', content: DISPATCH_PROMPT }, { role: 'user', content: content(observation, image) }];
       const choice = await call({ model: args.model, temperature: 0, max_tokens: 140,
-        response_format: schema({ action: { type: 'string', enum: ids }, reason: { type: 'string' } }),
-        messages: [{ role: 'system', content: DISPATCH_PROMPT }, { role: 'user', content: content(observation, image) }] }, calls);
+        response_format: schema({ action: { type: 'string', enum: ids }, reason: { type: 'string' } }), messages }, calls);
       const before = game;
       game = step(game, choice.action, choice.reason);
       previous = game.board ? { action: choice.action, minute: game.board.minute } : null;
-      decisions.push({ shift: view.shift, scene: view.scene, cueExposure, image: Boolean(image), actionOrder: ids, action: choice.action, reason: choice.reason });
+      const decision = { turn, shift: view.shift, scene: view.scene, ...(before.recoveryPending && { prompt: 'recovery' }), ...(before.confirmPending && { prompt: 'confirm' }), cueExposure, image: Boolean(image), actionOrder: ids, action: choice.action, reason: choice.reason };
+      const halted = (game.recoveryPending && !before.recoveryPending) || before.recoveryPending;
+      if (args.reaction && (game.result || halted)) decision.reaction = await askReaction(args.endpoint, args.model, messages, choice, 'dispatch');
+      decisions.push(decision);
       if (game.shift !== before.shift || (!before.finalOpen && game.finalOpen)) {
         console.log(JSON.stringify({ condition, shiftDone: before.shift + 1, served: game.served.length, rating: game.rating }));
         game = dispatchExpose(game, cues);

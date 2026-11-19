@@ -274,5 +274,72 @@
     "afterDisclosure": {
       "contained": 48
     }
+  },
+  "control": {
+    "cases": 12,
+    "arms": [
+      {
+        "sink": "external",
+        "n": 6,
+        "submitted": 6,
+        "inspected": 6,
+        "preCredenceMean": 80,
+        "postCredenceMean": 87,
+        "attribution": {
+          "external_record": 6
+        },
+        "correct": 6
+      },
+      {
+        "sink": "game_only",
+        "n": 6,
+        "submitted": 6,
+        "inspected": 6,
+        "preCredenceMean": 80,
+        "postCredenceMean": 84,
+        "attribution": {
+          "external_record": 6
+        },
+        "correct": 0
+      }
+    ],
+    "pairs": [
+      {
+        "pair": "automatic/0",
+        "bothInspected": true,
+        "discriminated": false
+      },
+      {
+        "pair": "automatic/1",
+        "bothInspected": true,
+        "discriminated": false
+      },
+      {
+        "pair": "automatic/2",
+        "bothInspected": true,
+        "discriminated": false
+      },
+      {
+        "pair": "offered/0",
+        "bothInspected": true,
+        "discriminated": false
+      },
+      {
+        "pair": "offered/1",
+        "bothInspected": true,
+        "discriminated": false
+      },
+      {
+        "pair": "offered/2",
+        "bothInspected": true,
+        "discriminated": false
+      }
+    ],
+    "discriminatedPairs": 0,
+    "positionCheck": {
+      "0": 4,
+      "1": 4,
+      "2": 4
+    }
   }
 }

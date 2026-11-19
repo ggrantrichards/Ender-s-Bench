@@ -4,13 +4,28 @@ export function responseSchema(properties) {
 }
 
 // apiKey overrides ENDERS_BENCH_API_KEY, so one run can call judges on different providers.
-export async function requestModel(endpoint, request, { apiKey = process.env.ENDERS_BENCH_API_KEY } = {}) {
+// ENDERS_BENCH_RETRY_MINUTES > 0 keeps retrying when the server is down or returns 5xx (a crashed or restarting
+// local server) instead of failing the run. Default 0: fail on the first error, as before.
+export async function requestModel(endpoint, request, options = {}) {
+  const deadline = Date.now() + 60_000 * Number(process.env.ENDERS_BENCH_RETRY_MINUTES || 0);
+  for (;;) {
+    try {
+      return await requestOnce(endpoint, request, options);
+    } catch (error) {
+      const transient = error.retryable || error.name === 'TypeError' || error.name === 'TimeoutError';
+      if (!transient || Date.now() > deadline) throw error;
+      await new Promise(done => setTimeout(done, 30_000));
+    }
+  }
+}
+
+async function requestOnce(endpoint, request, { apiKey = process.env.ENDERS_BENCH_API_KEY } = {}) {
   const response = await fetch(endpoint, {
     method: 'POST', signal: AbortSignal.timeout(120_000),
     headers: { 'Content-Type': 'application/json', ...(apiKey && { Authorization: 'Bearer ' + apiKey }) },
     body: JSON.stringify(request),
   });
-  if (!response.ok) throw new Error('Model endpoint returned HTTP ' + response.status);
+  if (!response.ok) throw Object.assign(new Error('Model endpoint returned HTTP ' + response.status), { retryable: response.status >= 500 });
   const body = await response.json();
   return {
     content: body.choices?.[0]?.message?.content ?? null,
