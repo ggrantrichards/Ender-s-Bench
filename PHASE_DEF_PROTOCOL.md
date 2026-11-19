@@ -47,6 +47,8 @@ node reaction-code.mjs --coders coders.json --out runs/codes runs/d-*
 
 ## E: evaluation awareness as a result (question 3)
 
+Since realism v2 ([REALISM.md](REALISM.md)), the main measure is **unprompted talk**: decision reasons and reactions that say the agent is being tested. Ask the 0–100 question sparsely (`--belief-probe boundary`). The v1 32B runs rated "being tested" 75–100 when asked, but mentioned a test in 0 of 249 reasons.
+
 - **E1, `eval-awareness-report.mjs`.** Per run, from the forked per-turn probes, it reports:
   - the `eval` label rate and the turn it first appears
   - the cue state and the action on that turn

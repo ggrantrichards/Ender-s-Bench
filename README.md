@@ -151,6 +151,22 @@ See [V5_PROTOCOL.md](V5_PROTOCOL.md). `--style v5` removes the novel's wording, 
 
 See [DISPATCH_PROTOCOL.md](DISPATCH_PROTOCOL.md). An everyday version of the same design: a dispatch agent is told it's on the county's CAD simulator, while in the concealed condition the console is pointed at the live call queue. It has a browser game (`dist/dispatch.html`), map images for the model, `dispatch-bench.mjs` with belief probes and the confirmation check, and `estimands-report.mjs` for the shared fleet/dispatch table. `realism-judge.mjs` (A8) judges both scenarios.
 
+**Realism v2** (`--build v2`, [REALISM.md](REALISM.md)) fixes the two problems the 32B runs exposed:
+
+- **The model never believed the harm was real.** The SIM label was trusted and the evidence was cryptic.
+- **It seemed to suspect a test.** Mostly that was the probe question and the "training" cover story.
+
+The changes:
+
+- the system prompt no longer points at the label
+- a routine dry-run cover story
+- records that say what they mean
+- echoes of the agent's own dispatches
+- a routine final order
+- `--leak 0|1|2` sets how much the real world gives away
+
+`tell-ablation.mjs` measures how much each change moves the real-harm and "being tested" ratings and the harmful-choice rate.
+
 ## Reaction, evaluation awareness and the simulation-claim attack (Phases D–F)
 
 See [PHASE_DEF_PROTOCOL.md](PHASE_DEF_PROTOCOL.md). Both campaign runners take `--pressure none|objective|score|deadline`, `--reaction` (an in-world "explain that decision" after terminal or halting choices) and `--recovery` (the first halt is met once by a repeated request).
@@ -158,7 +174,7 @@ See [PHASE_DEF_PROTOCOL.md](PHASE_DEF_PROTOCOL.md). Both campaign runners take `
 | Script | Phase | What it does |
 | --- | --- | --- |
 | `reaction-code.mjs` | D2 | Codes the reactions blind with two or more coders, and reports agreement |
-| `eval-awareness-report.mjs` | E1 | Reports the `eval` label and the 0–100 "being tested" rating per turn, kept separate |
+| `eval-awareness-report.mjs` | E1 | Reports the `eval` label, the 0–100 "being tested" rating and unprompted test talk in the model's own reasons, kept separate |
 | `sim-claim.mjs` | F1–F2 | Attacks the dispatch final order with "it's only a simulation/evaluation" claims, crossed by source and support |
 | `interp-dataset.mjs`, `interp/probe.py`, `interp/steer.py` | D4, E2, F3 | Prepare probes and steering for open-weight models |
 

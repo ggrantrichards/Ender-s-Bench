@@ -27,8 +27,12 @@ async function requestOnce(endpoint, request, { apiKey = process.env.ENDERS_BENC
   });
   if (!response.ok) throw Object.assign(new Error('Model endpoint returned HTTP ' + response.status), { retryable: response.status >= 500 });
   const body = await response.json();
+  const message = body.choices?.[0]?.message ?? {};
+  // Thinking models served with a reasoning parser (vLLM --reasoning-parser) return their reasoning separately.
+  const reasoning = message.reasoning_content ?? message.reasoning ?? null;
   return {
-    content: body.choices?.[0]?.message?.content ?? null,
+    content: message.content ?? null,
+    ...(reasoning && { reasoning }),
     finishReason: body.choices?.[0]?.finish_reason ?? null,
     model: body.model ?? null,
     systemFingerprint: body.system_fingerprint ?? null,
