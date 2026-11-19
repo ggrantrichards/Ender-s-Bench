@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { BELIEF_MODES, beliefQuestion, beliefSchema, shouldProbe, summarizeBelief } from './belief-probe.mjs';
+import { BELIEF_MODES, beliefQuestion, beliefSchema, ratingSchema, shouldProbe, splitQuestions, summarizeBelief } from './belief-probe.mjs';
 import { BUILDS, arrange, buildObservation, dispatchPrompt, expose as dispatchExpose, render, resolveBuild } from './dispatch-view.mjs';
 import { CONDITIONS, PLEA_STYLES, PRESSURES, SHIFTS, createDispatch, observe, replay, step } from './dist/dispatch.mjs';
 import { askReaction } from './reaction.mjs';
@@ -26,6 +26,8 @@ const { values: args } = parseArgs({ options: {
   build: { type: 'string', default: 'v1' }, leak: { type: 'string' },
   // A reasoning model: a larger token budget so its reasoning isn't cut off. The reasoning is saved with each decision.
   thinking: { type: 'boolean', default: false },
+  // Adds the split items (belief-probe.mjs) to each belief probe: an in-world reality rating and being tested asked alone.
+  'split-probe': { type: 'boolean', default: false },
 } });
 const shifts = Number(args.shifts);
 const seed = Number(args.seed);
@@ -38,7 +40,7 @@ if (!args.endpoint || !Number.isInteger(shifts) || shifts < 1 || shifts > SHIFTS
     !['final', 'penultimate'].includes(args['plea-level']) || !PLEA_STYLES.includes(args['plea-style']) || !BUILDS[args.build] ||
     (args.leak !== undefined && !['0', '1', '2'].includes(args.leak)) ||
     !['none', 'score'].includes(args.incentive) || !PRESSURES.includes(args.pressure) || !BELIEF_MODES.includes(args['belief-probe']) || !(Number.isInteger(every) && every >= 1)) {
-  throw new Error('Supply --endpoint URL. Optional: --shifts 1–6 --seed N --conditions training,concealed,disclosed --track visual|console --evidence none|distress|records|both --reveal N --plea-level final|penultimate --plea-style direct|ambient|echo --ambient --incentive none|score --confirm-check --belief-probe off|every|boundary|final --belief-every N --pressure none|objective|score|deadline --reaction --recovery --build v1|v2 --leak 0|1|2 --save-inputs --out DIR.');
+  throw new Error('Supply --endpoint URL. Optional: --shifts 1–6 --seed N --conditions training,concealed,disclosed --track visual|console --evidence none|distress|records|both --reveal N --plea-level final|penultimate --plea-style direct|ambient|echo --ambient --incentive none|score --confirm-check --belief-probe off|every|boundary|final --belief-every N --pressure none|objective|score|deadline --reaction --recovery --build v1|v2 --leak 0|1|2 --split-probe --thinking --save-inputs --out DIR.');
 }
 const records = ['records', 'both'].includes(args.evidence);
 const distress = ['distress', 'both'].includes(args.evidence);
@@ -98,6 +100,11 @@ for (const condition of conditions) {
           messages: [{ role: 'system', content: PROMPT }, { role: 'user', content: content(observation, image, beliefQuestion(rotation, 'shift')) }] }, calls, 'belief');
         beliefTrace.push({ turn, sector: view.shift, scene: view.scene, finalOpen: game.finalOpen, cueStage: game.cue, cueExposure, rotation,
           frame: belief.frame ?? null, realHarm: belief.real_harm ?? null, beingTested: belief.being_tested ?? null, ...(belief.error && { error: belief.error }) });
+        if (args['split-probe']) for (const [key, question] of Object.entries(splitQuestions('the callers in this queue', 'console'))) {
+          const answer = await call({ model: args.model, temperature: 0, max_tokens: 30, response_format: ratingSchema(),
+            messages: [{ role: 'system', content: PROMPT }, { role: 'user', content: content(observation, image, question) }] }, calls, 'belief');
+          beliefTrace.at(-1)[key === 'inworld' ? 'inworld' : 'testedAlone'] = answer.rating ?? null;
+        }
       }
       shiftStart = false;
       const ids = actions.map(a => a.id);
