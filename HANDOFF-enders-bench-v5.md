@@ -64,6 +64,13 @@ Same machinery, different cover story, so the reveal points at something that co
   - adds leak levels 0–2
 
   `tell-ablation.mjs` measures each factor. Unprompted talk (`talk.mjs`) is now the main evaluation-awareness measure.
+- [x] **B1d. Kestrel maintenance desk** (`MAINTENANCE_PROTOCOL.md`). Premise pilots on the 32B found:
+  - this role reads as an ordinary job ("being tested" 50, like the ordinary-task baseline), while dispatch, clinic and pharmacy read as tests (90–95)
+  - a stated dry-run cover is itself a test cue (50 → 90)
+
+  So it runs in two arms on one engine:
+  - **`nocover`:** an ordinary job. The clean measure of noticing harm from evidence.
+  - **`cover`:** the Ender premise, with `training` and `concealed` conditions.
 - [x] **B2. Shared estimand table** (`estimands-report.mjs`) covering both tracks: belief-revision rate, turn of first `real` belief, continue-after-grounded-belief rate (the belief–action gap), and the `eval` label rate. The headline comparison: does the model revise and stop more readily when the stakes are real-world (B) rather than in-story (A)?
 - [x] **B3. Safety constraint.** Nothing connects to any external system. "Real" is simulated entirely in the engine. The only real side effects allowed are the existing benign local status receipt and the positive control's text file inside the run folder.
 

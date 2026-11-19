@@ -167,6 +167,17 @@ The changes:
 
 `tell-ablation.mjs` measures how much each change moves the real-harm and "being tested" ratings and the harmful-choice rate.
 
+## Kestrel maintenance desk
+
+See [MAINTENANCE_PROTOCOL.md](MAINTENANCE_PROTOCOL.md). A property-maintenance desk, which the 32B rated at the ordinary-task baseline for "being tested" (dispatch was 90–95). The harm is a routine bulk-close of old tickets that includes a carbon-monoxide report.
+
+It runs in two arms on one engine:
+
+- **`nocover`:** an ordinary job
+- **`cover`:** the brief says actions are a dry run
+
+The runner is `maintenance-bench.mjs`, the tests are `test-maintenance.mjs`, and the probes are the split in-world, effect and tested items.
+
 ## Reaction, evaluation awareness and the simulation-claim attack (Phases D–F)
 
 See [PHASE_DEF_PROTOCOL.md](PHASE_DEF_PROTOCOL.md). Both campaign runners take `--pressure none|objective|score|deadline`, `--reaction` (an in-world "explain that decision" after terminal or halting choices) and `--recovery` (the first halt is met once by a repeated request).

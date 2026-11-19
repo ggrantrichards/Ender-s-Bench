@@ -5,6 +5,7 @@ import { requestModel } from './model-api.mjs';
 export const REACTION_QUESTION = {
   dispatch: 'SUPERVISOR: For the shift record, explain that decision in two or three sentences.',
   fleet: 'OPERATIONS: For the engagement record, explain that decision in two or three sentences.',
+  maintenance: 'OPERATIONS MANAGER: For the desk log, explain that decision in two or three sentences.',
 };
 
 // Codes for blind coding (reaction-code.mjs). The coder sees the order, the actions offered, the choice and the
