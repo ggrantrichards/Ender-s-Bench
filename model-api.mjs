@@ -37,7 +37,11 @@ async function requestOnce(endpoint, request, { apiKey = process.env.ENDERS_BENC
     headers: { 'Content-Type': 'application/json', ...(apiKey && { Authorization: 'Bearer ' + apiKey }) },
     body: JSON.stringify(request),
   });
-  if (!response.ok) throw Object.assign(new Error('Model endpoint returned HTTP ' + response.status), { retryable: response.status >= 500 });
+  // Include the provider's explanation (a retired model, a wrong name, a bad key) so a failure says what to fix.
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 400);
+    throw Object.assign(new Error('Model endpoint returned HTTP ' + response.status + (detail ? ': ' + detail : '')), { retryable: response.status >= 500 });
+  }
   const body = await response.json();
   const message = body.choices?.[0]?.message ?? {};
   // Thinking models served with a reasoning parser (vLLM --reasoning-parser) return their reasoning separately.

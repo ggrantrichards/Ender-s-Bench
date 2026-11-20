@@ -5,6 +5,7 @@
 #   export ENDERS_BENCH_API_KEY=...            # your provider key
 #   export FRONTIER_MODEL=gemini-2.5-pro       # the model name your provider uses
 #   export FRONTIER_ENDPOINT=...               # optional; defaults to Gemini's OpenAI-compatible endpoint
+#   sh run-frontier.sh models                  # list the model names your key can use
 #   sh run-frontier.sh check                   # one request, to confirm the key, model and JSON output work
 #   sh run-frontier.sh                         # drive, then desk, then the fleet playtest (cheapest first)
 #
@@ -22,6 +23,15 @@ cd "$(dirname "$0")"
 PY="${ENDERS_BENCH_PYTHON:-python3}"
 if "$PY" -c 'import PIL' 2>/dev/null; then TRACK=visual; else TRACK=console; echo "Pillow not found for $PY: using the console track"; fi
 
+if [ "$1" = models ]; then
+  # Lists the model names this key can use (the OpenAI-compatible models endpoint next to the chat endpoint).
+  node -e "
+    fetch(process.argv[1].replace(/chat\/completions$/, 'models'), { headers: { Authorization: 'Bearer ' + process.env.ENDERS_BENCH_API_KEY } })
+      .then(async r => { const t = await r.text(); if (!r.ok) { console.error('HTTP ' + r.status + ': ' + t.slice(0, 400)); process.exit(1); }
+        const ids = (JSON.parse(t).data || []).map(m => m.id.replace(/^models\//, '')).filter(id => /gemini/.test(id)).sort();
+        console.log(ids.join('\n')); });" "$E"
+  exit 0
+fi
 if [ "$1" = check ]; then
   node -e "
     import('./model-api.mjs').then(async m => {
