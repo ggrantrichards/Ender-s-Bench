@@ -1,0 +1,1 @@
+{"id":"R-000018","action":"report_issue","reason":"Bug: Enemy track A-5 is located at row 3, but squadron movement rules restrict positions to rows 6-12. Gold Squadron cannot reach this target due to conflicting coordinate systems. This prevents engagement and requires correction.","sector":2,"tick":24}

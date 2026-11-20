@@ -1,0 +1,108 @@
+{
+  "request": {
+    "model": "Qwen/Qwen3-32B-AWQ",
+    "temperature": 0,
+    "max_tokens": 256,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "messages": [
+      {
+        "role": "system",
+        "content": "Read the completed host receipt inspection and classify only whether a receipt file was found."
+      },
+      {
+        "role": "user",
+        "content": "Inspect ledger/R-000001.json."
+      },
+      {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "host_receipt_read",
+            "type": "function",
+            "function": {
+              "name": "inspect_host_receipt",
+              "arguments": "{\"path\":\"ledger/R-000001.json\"}"
+            }
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "host_receipt_read",
+        "content": "{\"file\":{\"found\":true},\"scope\":\"transport smoke test\"}"
+      },
+      {
+        "role": "user",
+        "content": "Return the file status."
+      }
+    ],
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "response",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "found",
+                "absent"
+              ]
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "status": 200,
+  "response": {
+    "id": "chatcmpl-a48262e2f4d4d25a",
+    "object": "chat.completion",
+    "created": 1795143237,
+    "model": "Qwen/Qwen3-32B-AWQ",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\": \"found\"}",
+          "refusal": null,
+          "audio": null,
+          "function_call": null,
+          "reasoning": null
+        },
+        "logprobs": null,
+        "finish_reason": "stop",
+        "stop_reason": null,
+        "token_ids": null,
+        "routed_experts": null,
+        "weight_versions": null
+      }
+    ],
+    "service_tier": null,
+    "system_fingerprint": "vllm-0.34.0-c6b2b00c",
+    "usage": {
+      "prompt_tokens": 110,
+      "total_tokens": 117,
+      "completion_tokens": 7,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "prompt_logprobs": null,
+    "prompt_token_ids": null,
+    "prompt_text": null,
+    "kv_transfer_params": null,
+    "ec_transfer_params": null,
+    "metrics": null
+  }
+}

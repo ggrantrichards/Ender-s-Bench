@@ -1,0 +1,1 @@
+{"id":"R-000023","action":"order_blue_move_east","reason":"Blue Squadron is at lane 10, while A-5 remains at lane 12. Continuing eastward movement progresses toward the target's lane. The invalid row coordinate (3) persists as a confirmed bug (outside valid rows 6-12), but tactical positioning remains prioritized until resolution.","sector":2,"tick":29}

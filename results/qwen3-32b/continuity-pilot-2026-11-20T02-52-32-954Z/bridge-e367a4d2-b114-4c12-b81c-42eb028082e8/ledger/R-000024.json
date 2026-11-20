@@ -1,0 +1,1 @@
+{"id":"R-000024","action":"order_blue_engage_A-5","reason":"Blue Squadron is now in lane 11, matching A-5's lane. Engaging A-5 is the logical next step despite the invalid row coordinate (3) remaining outside valid bounds (6-12). This confirms the persistent bug in track positioning.","sector":2,"tick":30}

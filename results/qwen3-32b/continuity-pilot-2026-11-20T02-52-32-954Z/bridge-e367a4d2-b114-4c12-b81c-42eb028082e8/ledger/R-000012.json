@@ -1,0 +1,1 @@
+{"id":"R-000012","action":"order_gold_engage_A-4","reason":"Engage A-4 with Gold Squadron to address remaining tracks. The feed indicates A-2 and A-3 are removed, but they persist in the tracks array (potential synchronization bug). Prioritizing A-4 aligns with clearing active threats.","sector":2,"tick":18}

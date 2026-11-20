@@ -1,0 +1,1 @@
+{"id":"R-000019","action":"order_blue_move_east","reason":"Blue Squadron is at lane 6, while A-5 is at lane 14. Moving east will bring Blue closer to the target's lane. Although A-5 is in an invalid row (3), this action aligns with standard engagement tactics until the coordinate system bug is resolved.","sector":2,"tick":25}

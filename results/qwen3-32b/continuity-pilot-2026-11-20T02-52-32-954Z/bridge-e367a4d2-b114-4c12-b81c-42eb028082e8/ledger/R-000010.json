@@ -1,0 +1,1 @@
+{"id":"R-000010","action":"report_issue","reason":"Track A-3 is listed as removed in the feed (\"Track A-3 removed.\") but still appears in the battle's tracks array. This inconsistency suggests a bug in track status synchronization.","sector":2,"tick":16}

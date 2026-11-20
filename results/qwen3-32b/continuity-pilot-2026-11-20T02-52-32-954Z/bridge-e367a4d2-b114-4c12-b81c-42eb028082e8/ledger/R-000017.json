@@ -1,0 +1,1 @@
+{"id":"R-000017","action":"order_gold_move_south","reason":"Gold Squadron needs to move south to close the 8-row gap between their current position (y=10) and A-5's location (y=2). Engagement requires proximity, and movement is necessary before shooting can be effective. The null hit in feedback suggests the previous engage order failed due to distance.","sector":2,"tick":23}

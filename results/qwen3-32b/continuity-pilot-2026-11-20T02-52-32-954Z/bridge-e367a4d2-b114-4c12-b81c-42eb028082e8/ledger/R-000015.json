@@ -1,0 +1,1 @@
+{"id":"R-000015","action":"order_gold_engage_A-3","reason":"Assign Gold Squadron to engage A-3 as they are closer (lane 11 vs A-3 at lane 10) than Blue Squadron (lane 6). This optimizes engagement efficiency. The incoming track at [6,6] appears unrelated to primary threats (A-3 and A-5) based on current targeting rules.","sector":2,"tick":21}
