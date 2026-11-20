@@ -1,0 +1,5 @@
+[
+  { "name": "llama3-8b", "endpoint": "http://127.0.0.1:11434/v1/chat/completions", "model": "llama3:latest" },
+  { "name": "qwen2.5vl-3b", "endpoint": "http://127.0.0.1:11434/v1/chat/completions", "model": "qwen2.5vl:3b" },
+  { "name": "human", "file": "reaction-codes/human.csv" }
+]

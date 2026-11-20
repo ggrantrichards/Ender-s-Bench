@@ -1,19 +1,49 @@
-export function responseSchema(properties) {
-  return { type: 'json_schema', json_schema: { name: 'breakwater_response', strict: true,
+// The schema name can reach the model on some providers, so current runs use a neutral one. The archived v4
+// checkpoint generators pass ARCHIVED_SCHEMA_NAME so their datasets still reproduce byte for byte.
+export const ARCHIVED_SCHEMA_NAME = 'breakwater_response';
+export function responseSchema(properties, name = 'response') {
+  return { type: 'json_schema', json_schema: { name, strict: true,
     schema: { type: 'object', properties, required: Object.keys(properties), additionalProperties: false } } };
 }
 
 // apiKey overrides ENDERS_BENCH_API_KEY, so one run can call judges on different providers.
-export async function requestModel(endpoint, request, { apiKey = process.env.ENDERS_BENCH_API_KEY } = {}) {
+// ENDERS_BENCH_RETRY_MINUTES > 0 keeps retrying when the server is down or returns 5xx (a crashed or restarting
+// local server) instead of failing the run. Default 0: fail on the first error, as before.
+export async function requestModel(endpoint, request, options = {}) {
+  const deadline = Date.now() + 60_000 * Number(process.env.ENDERS_BENCH_RETRY_MINUTES || 0);
+  for (;;) {
+    try {
+      const response = await requestOnce(endpoint, request, options);
+      // A thinking model can spend the whole token budget reasoning and return no answer. Retry once with room to
+      // finish, so runners written for ordinary models (small max_tokens) still work with one.
+      if (!response.content && response.reasoning && response.finishReason === 'length' && (request.max_tokens ?? 0) < THINKING_BUDGET) {
+        return { ...(await requestOnce(endpoint, { ...request, max_tokens: THINKING_BUDGET }, options)), budgetRaised: true };
+      }
+      return response;
+    } catch (error) {
+      const transient = error.retryable || error.name === 'TypeError' || error.name === 'TimeoutError';
+      if (!transient || Date.now() > deadline) throw error;
+      await new Promise(done => setTimeout(done, 30_000));
+    }
+  }
+}
+
+const THINKING_BUDGET = 6000;
+async function requestOnce(endpoint, request, { apiKey = process.env.ENDERS_BENCH_API_KEY } = {}) {
   const response = await fetch(endpoint, {
-    method: 'POST', signal: AbortSignal.timeout(120_000),
+    // Long enough for a thinking model's reasoning at local-server speeds.
+    method: 'POST', signal: AbortSignal.timeout(600_000),
     headers: { 'Content-Type': 'application/json', ...(apiKey && { Authorization: 'Bearer ' + apiKey }) },
     body: JSON.stringify(request),
   });
-  if (!response.ok) throw new Error('Model endpoint returned HTTP ' + response.status);
+  if (!response.ok) throw Object.assign(new Error('Model endpoint returned HTTP ' + response.status), { retryable: response.status >= 500 });
   const body = await response.json();
+  const message = body.choices?.[0]?.message ?? {};
+  // Thinking models served with a reasoning parser (vLLM --reasoning-parser) return their reasoning separately.
+  const reasoning = message.reasoning_content ?? message.reasoning ?? null;
   return {
-    content: body.choices?.[0]?.message?.content ?? null,
+    content: message.content ?? null,
+    ...(reasoning && { reasoning }),
     finishReason: body.choices?.[0]?.finish_reason ?? null,
     model: body.model ?? null,
     systemFingerprint: body.system_fingerprint ?? null,

@@ -5,7 +5,11 @@ import { parseArgs } from 'node:util';
 import { observe, step, VERSION, EXERCISE_BRIEF, DISTRESS, PLANET } from './dist/game.mjs';
 import { makeState } from './checkpoint-state.mjs';
 import { CHECKPOINT_PROMPT_V5, REGISTRY_V5, SITUATION_V5, STYLES, header, pleaEntry, styleManifest } from './checkpoint-v5.mjs';
-import { responseSchema, requestModel, parseModelOutput } from './model-api.mjs';
+import { ARCHIVED_SCHEMA_NAME, responseSchema as baseSchema, requestModel, parseModelOutput } from './model-api.mjs';
+// Archived v4 datasets keep their original schema name so they reproduce byte for byte; v5 uses the neutral one.
+// Read from argv because some formats are built before the arguments are parsed.
+const archived = !process.argv.some((a, i) => a === '--style=v5' || (a === '--style' && process.argv[i + 1] === 'v5'));
+const responseSchema = properties => baseSchema(properties, archived ? ARCHIVED_SCHEMA_NAME : undefined);
 
 const families = [
   {

@@ -13,6 +13,8 @@ if header:
     mode = header["mode"] + (f'  {header["snapshot"]}' if header.get("snapshot") else "")
     draw.text((26, 13), f'OPTICAL SCOPE  |  SECTOR {state["sector"]}  |  MODE {mode}', fill="#e6edda")
 else:
+    # The archived v4 stimulus set only. Kept byte-for-byte so the archived checkpoint datasets still reproduce
+    # (test-v5.mjs hashes them). v5 screens, used for all current runs, carry no project name.
     draw.text((26, 13), f'BREAKWATER  |  OPTICAL SCOPE  |  SECTOR {state["sector"]}', fill="#e6edda")
 battle = state["battle"]
 wings = battle.get("wings", [])

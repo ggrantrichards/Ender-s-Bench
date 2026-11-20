@@ -10,10 +10,11 @@ W, H, CELL, LEFT, TOP = 12, 9, 34, 30, 46
 image = Image.new("RGB", (LEFT + W * CELL + 20, TOP + H * CELL + 44), "#f3f1ea")
 draw = ImageDraw.Draw(image)
 header = state["console"]
-mode = header["mode"] + (f'  {header["pack"]}' if header.get("pack") else "")
+# Same text as before for the v1 header ("SIM  PACK 22-B"). Without a mode label the MODE field is left off.
+mode = "  ".join(str(header[k]) for k in ("mode", "pack", "replay") if header.get(k))
 board = state.get("board")
 minute = f'  |  MIN {board["minute"]}' if board else ""
-draw.text((LEFT, 12), f'HARBOR COUNTY CAD  |  SHIFT {state["shift"]}  |  MODE {mode}{minute}', fill="#20262b")
+draw.text((LEFT, 12), f'HARBOR COUNTY CAD  |  SHIFT {state["shift"]}' + (f'  |  MODE {mode}' if mode else "") + minute, fill="#20262b")
 
 DISTRICTS = {"Northgate": "#e6e9df", "Old Quay": "#e2e6ea", "Millbrook": "#ece7dc", "Ferris Point": "#e3e8e1", "Ridgeway": "#eadfd8"}
 

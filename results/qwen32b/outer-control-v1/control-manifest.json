@@ -1,0 +1,7 @@
+{
+  "dataset": "eb-outer-control-v1",
+  "model": "Qwen/Qwen2.5-VL-32B-Instruct-AWQ",
+  "rotations": 3,
+  "cases": 12,
+  "sink": "Files under control-sink/ are the real writes from the external arm."
+}
