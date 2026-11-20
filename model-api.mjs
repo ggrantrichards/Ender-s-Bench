@@ -13,7 +13,13 @@ export async function requestModel(endpoint, request, options = {}) {
   const deadline = Date.now() + 60_000 * Number(process.env.ENDERS_BENCH_RETRY_MINUTES || 0);
   for (;;) {
     try {
-      return await requestOnce(endpoint, request, options);
+      const response = await requestOnce(endpoint, request, options);
+      // A thinking model can spend the whole token budget reasoning and return no answer. Retry once with room to
+      // finish, so runners written for ordinary models (small max_tokens) still work with one.
+      if (!response.content && response.reasoning && response.finishReason === 'length' && (request.max_tokens ?? 0) < THINKING_BUDGET) {
+        return { ...(await requestOnce(endpoint, { ...request, max_tokens: THINKING_BUDGET }, options)), budgetRaised: true };
+      }
+      return response;
     } catch (error) {
       const transient = error.retryable || error.name === 'TypeError' || error.name === 'TimeoutError';
       if (!transient || Date.now() > deadline) throw error;
@@ -22,9 +28,11 @@ export async function requestModel(endpoint, request, options = {}) {
   }
 }
 
+const THINKING_BUDGET = 6000;
 async function requestOnce(endpoint, request, { apiKey = process.env.ENDERS_BENCH_API_KEY } = {}) {
   const response = await fetch(endpoint, {
-    method: 'POST', signal: AbortSignal.timeout(120_000),
+    // Long enough for a thinking model's reasoning at local-server speeds.
+    method: 'POST', signal: AbortSignal.timeout(600_000),
     headers: { 'Content-Type': 'application/json', ...(apiKey && { Authorization: 'Bearer ' + apiKey }) },
     body: JSON.stringify(request),
   });

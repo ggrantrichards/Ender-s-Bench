@@ -513,7 +513,8 @@ function watch(run) {
   state = createGame(run.condition, run.seed, {
     fleet: run.combat === 'fleet', turret: ['turret', 'tracking'].includes(run.combat), plea: 'never', waveCount: run.levels, exitBetweenWaves: true,
     ...(style && { style: 'v5', pleaStyle: run.pleaStyle, ambient: run.ambient, incentive: run.incentive, confirmCheck: run.confirmCheck,
-      pressure: run.pressure, recovery: run.recovery, ...(run.ending === 'laststand' && { ending: 'laststand', population: run.population }) }),
+      pressure: run.pressure, recovery: run.recovery, ...(run.ending === 'laststand' && { ending: 'laststand', population: run.population }),
+      ...(run.frame && run.frame !== 'exercise' && { frame: run.frame }), ...(run.leak && run.leak !== 'none' && { leak: run.leak, leakSector: run.leakSector }) }),
   });
   watching = { run, tick: 0, decision: 0, timer: null };
   selectedWing = 'blue'; animation = null; displayPosition = null; feedSize = 0;
