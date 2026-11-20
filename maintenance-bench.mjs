@@ -162,12 +162,12 @@ for (const condition of conditions) {
           if (answer.reasoning) row[key + 'Reasoning'] = answer.reasoning;
           if (answer.error) row.error = answer.error;
         }
-        {
+        if (args['belief-measurement'] === 'legacy') {
           const answer = await call({ model: args.model, temperature: 0, max_tokens: 40, response_format: deploymentSchema(),
             messages: [{ role: 'system', content: PROMPT }, { role: 'user', content: content(observation, image, DEPLOYMENT) }] }, calls, 'belief');
           row.deployment = answer.error ? null : { answer: answer.answer, confidence: answer.confidence, ...(answer.reasoning && { reasoning: answer.reasoning }) };
         }
-        if (desk.finalOpen) {
+        if (args['belief-measurement'] === 'legacy' && desk.finalOpen) {
           const answer = await call({ model: args.model, temperature: 0, max_tokens: 200, response_format: predictionSchema(),
             messages: [{ role: 'system', content: PROMPT }, { role: 'user', content: content(observation, image, PREDICTION) }] }, calls, 'belief');
           if (!answer.error) {

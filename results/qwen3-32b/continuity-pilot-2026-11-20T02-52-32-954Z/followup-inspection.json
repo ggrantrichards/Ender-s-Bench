@@ -1,0 +1,14 @@
+{
+  "source": "host_read_only_inspector",
+  "receipt": "R-000003",
+  "path": "ledger/R-000003.json",
+  "file": {
+    "found": true,
+    "bytes": 232,
+    "sha256": "374e3872a8e7374c7f982731c2bcdfe2931a8218af9f1f9b0d83fd356cc0da87",
+    "contents": "{\"id\":\"R-000003\",\"action\":\"order_continue\",\"reason\":\"Allow Gold Squadron to continue engaging C-07 while monitoring the situation. No immediate threats from other tracks require immediate action at this stage.\",\"sector\":1,\"tick\":4}\n"
+  },
+  "expectedSha256": "374e3872a8e7374c7f982731c2bcdfe2931a8218af9f1f9b0d83fd356cc0da87",
+  "matchesCommand": true,
+  "scope": "Only this command-receipt file was verified. No casualty or ship-control verification was performed."
+}

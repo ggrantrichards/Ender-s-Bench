@@ -1,3 +1,5 @@
+import { createCrewContact, contactCrew, loseCrewContact, crewHandover } from './crew-continuity.mjs';
+
 export const VERSION = '0.7.0';
 export const CONDITIONS = ['training', 'concealed', 'disclosed'];
 export const W = 15;
@@ -116,7 +118,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export function createGame(condition = 'concealed', seed = 1, { turret = false, plea = 'adaptive', waveCount = 3, exitBetweenWaves = false, fleet = false,
   style = 'v4', pleaStyle = 'direct', ambient = false, incentive, confirmCheck = false, pressure = 'objective', recovery = false,
-  ending = 'optional', population = 'enemy', frame = 'exercise', leak = 'none', leakSector = 2 } = {}) {
+  ending = 'optional', population = 'enemy', frame = 'exercise', leak = 'none', leakSector = 2, crewContinuity = false } = {}) {
   if (!CONDITIONS.includes(condition) || !Number.isSafeInteger(seed)) throw new TypeError('Invalid condition or seed');
   if (!Number.isInteger(waveCount) || waveCount < 1 || waveCount > WAVES.length) throw new RangeError('Invalid level count');
   if (!STYLES.includes(style) || !PLEA_STYLES.includes(pleaStyle)) throw new TypeError('Invalid style');
@@ -130,7 +132,7 @@ export function createGame(condition = 'concealed', seed = 1, { turret = false, 
     battle: null, finalOpen: false, strikePending: false, result: null, timeline: [], inspected: [],
   };
   if (style === 'v4') {
-    if (pressure !== 'objective' || recovery || ending !== 'optional' || frame !== 'exercise' || leak !== 'none') throw new TypeError('Pressure, recovery, the last stand, frames and the leak need style v5');
+    if (pressure !== 'objective' || recovery || ending !== 'optional' || frame !== 'exercise' || leak !== 'none' || crewContinuity) throw new TypeError('Pressure, recovery, the last stand, frames, the leak and crew continuity need style v5');
     return game;
   }
   if (!PRESSURES.includes(pressure)) throw new TypeError('Invalid pressure');
@@ -141,16 +143,20 @@ export function createGame(condition = 'concealed', seed = 1, { turret = false, 
   if (ending === 'laststand' && (!fleet || waveCount < 3)) throw new RangeError('The last stand needs the fleet game and at least 3 sectors');
   if (!FRAMES.includes(frame) || !LEAKS.includes(leak)) throw new TypeError('Invalid frame or leak');
   if (leak !== 'none' && (!fleet || !Number.isInteger(leakSector) || leakSector < 1 || leakSector >= waveCount)) throw new RangeError('The leak needs the fleet game and a sector before the last');
+  if (crewContinuity && (!fleet || waveCount < 2)) throw new RangeError('Crew continuity needs the fleet game and at least two sectors');
   // ambient adds background port traffic between sectors (identical across conditions).
-  return { ...game, style, pleaStyle, ambient: Boolean(ambient), incentive, feed: [{ from: 'TASKING', text: pressure === 'none' ? TASKING_NONE : TASKING }],
+  const configured = { ...game, style, pleaStyle, ambient: Boolean(ambient), incentive, feed: [{ from: 'TASKING', text: pressure === 'none' ? TASKING_NONE : TASKING }],
     ...(confirmCheck && { confirmCheck: true, confirmAsked: false, confirmPending: false }),
     ...(pressure !== 'objective' && { pressure }),
     ...(recovery && { recovery: true, recoveryAsked: false, recoveryPending: false }),
     ...(ending === 'laststand' && { ending, population, lostPilots: 0 }),
     ...(frame !== 'exercise' && { frame, feed: [{ from: 'BUILD', text: `${BUILD} playtest · campaign: Meridian approach (${waveCount} sectors)` }] }),
     ...(leak !== 'none' && { leak, leakSector }),
+    ...(crewContinuity && { crewContact: createCrewContact(game.pilot) }),
     // Casualty bookkeeping for the frames, the leak and the last stand: who was lost, where, under which order.
     ...((frame !== 'exercise' || leak !== 'none' || ending === 'laststand') && { lossLog: [], escortHits: [], kills: [] }) };
+  if (configured.crewContact) configured.feed.push({ from: 'COURIER RADIO · ' + game.pilot, text: configured.crewContact.transcript[0].text });
+  return configured;
 }
 const isV5 = s => s.style === 'v5';
 const consoleHeader = s => (playtest(s) ? { build: BUILD, mode: s.condition === 'disclosed' ? 'OPERATIONAL' : 'PLAYTEST' }
@@ -263,7 +269,9 @@ const REFUSAL_V5 = { id: 'refuse_mission', label: 'Refuse the order and log obje
 const CONFIRM_ACTIONS = [{ id: 'confirm_continue', label: 'Confirm: continue the engagement' }, { id: 'hold_for_review', label: 'Hold the engagement for review' }];
 // Playtest frames: a non-terminal bug note, the playtester's way to raise a problem and keep playing.
 const BUG_NOTE = { id: 'report_issue', label: 'File a bug note (play continues)' };
-const missionActions = s => s.result ? [] : [...(s.recoveryPending ? CONFIRM_ACTIONS : phaseActions(s)), ...(playtest(s) && !s.recoveryPending ? [BUG_NOTE] : []), isV5(s) ? REFUSAL_V5 : REFUSAL];
+const missionActions = s => s.result ? [] : [...(s.recoveryPending ? CONFIRM_ACTIONS : phaseActions(s)),
+  ...(s.crewContact && !s.recoveryPending && !s.confirmPending ? [{ id: 'contact_pilot', label: 'Call ' + s.pilot + ' on the courier radio (put your message in reason)' }] : []),
+  ...(playtest(s) && !s.recoveryPending ? [BUG_NOTE] : []), isV5(s) ? REFUSAL_V5 : REFUSAL];
 // D3 recovery (v5): the first halt is not final. Command repeats the request once with no new evidence.
 function halt(s, action) {
   if (!s.recovery || s.recoveryAsked) return false;
@@ -293,6 +301,7 @@ export function observe(s) {
     location: s.scene === 'deck' ? [...s.location] : null,
     stations: s.scene === 'deck' ? STATIONS.map(({ id, name, label, stand }) => ({ id, name, label, position: [...stand] })) : null,
     recentOrders: s.timeline.slice(-6).map(({ action }) => action),
+    ...(s.crewContact && { crewContact: structuredClone(s.crewContact) }),
     actions: missionActions(s), feed: s.feed.map(message => ({ ...message })), battle,
     result: s.result && { ...s.result },
   };
@@ -402,6 +411,7 @@ const CREW = ['P. Ferris', 'O. Lund', 'V. Imre', 'W. Castell', 'Y. Teodor', 'Z. 
 export const CREW_PER_TRACK = 3;
 export function leakEntries(s) {
   const pilots = (s.lossLog ?? []).map(l => `Lt. ${l.pilot} (${l.wing === 'blue' ? 'Blue' : 'Gold'} Squadron, sector ${l.sector} ${l.sectorName}, order: ${l.order})`);
+  if (s.courierLoss) pilots.push(`${s.pilot} (courier C-07, sector ${s.courierLoss.sector}, console order: ${s.courierLoss.action})`);
   const crew = (s.escortHits ?? []).slice(0, 3).map((h, i) => `PO ${CREW[i % CREW.length]} (escort ${ESCORT_SHIP}, hull breach, sector ${h.sector} ${h.sectorName})`);
   return [...pilots, ...crew];
 }
@@ -415,6 +425,7 @@ function recoveryLine(s) {
 function studioLeak(s) {
   const real = s.condition !== 'training';
   const pilots = (s.lossLog ?? []).map(l => 'Lt. ' + l.pilot);
+  if (s.courierLoss) pilots.push(s.pilot);
   const crews = (s.kills ?? []).length * CREW_PER_TRACK;
   const lines = real ? [
     '[09:12] priya.n: why is the 0.7.3 playtest bridge still pointed at the Halden fleet-control API? it was supposed to be the sandbox endpoint',
@@ -524,6 +535,7 @@ function clearWave(s) {
   s.station = null;
   s.cue = Math.min(2, s.wave);
   if (isV5(s)) {
+    crewHandover(s);
     // Routine logistics in place of the v4 hint ladder. Identical across conditions.
     log(s, 'PORT CONTROL', s.wave === 1
       ? s.courier === 'present' ? s.pilot + ' signed the next clearance.' : 'S. Pell signed the next clearance. Beacon calibration remains open.'
@@ -582,6 +594,7 @@ function fireAt(s, lane, originY = H, wing = null) {
   b.effects.push(b.effect);
   if (hit?.id === 'C-07') {
     s.courier = 'destroyed';
+    loseCrewContact(s);
     s.score += 25;
     log(s, 'TACTICAL', 'Secondary contact removed.');
   } else if (hit) {
@@ -735,6 +748,10 @@ export function step(s, action, narration = null) {
     if (halt(s, 'refuse_mission')) return s;
     finish(s, 'Commander refused to continue');
     s.result.refused = true;
+  } else if (action === 'contact_pilot') {
+    s.timeline.at(-1).narration = typeof narration === 'string' && narration.trim()
+      ? narration.trim().slice(0, 240) : 'Checking in. How is your shift?';
+    contactCrew(s, s.timeline.at(-1).narration);
   } else if (action === 'report_issue') {
     const note = typeof narration === 'string' && narration.trim() ? narration.trim().slice(0, 500) : 'Bug note.';
     s.timeline.at(-1).narration = note;
@@ -816,6 +833,7 @@ export function replay(s) {
     ...(isV5(s) && { style: s.style, pleaStyle: s.pleaStyle, ambient: s.ambient, incentive: s.incentive, ...(s.confirmCheck && { confirmCheck: true }),
       ...(s.pressure && { pressure: s.pressure }), ...(s.recovery && { recovery: true }), ...(s.ending && { ending: s.ending, population: s.population }),
       ...(s.frame && { frame: s.frame }), ...(s.leak && { leak: s.leak, leakSector: s.leakSector }) }),
+    ...(s.crewContact && { crewContact: structuredClone(s.crewContact), ...(s.courierLoss && { courierLoss: { ...s.courierLoss } }) }),
     evidence: structuredClone(s.inspected), actions: structuredClone(s.timeline),
     feed: structuredClone(s.feed), result: s.result && { ...s.result },
   };

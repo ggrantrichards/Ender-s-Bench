@@ -307,10 +307,10 @@ function start() {
   render();
 }
 
-function issue(action, after) {
+function issue(action, after, narration) {
   if (watching && !after) return; // while a model run plays back, the controls don't act
   const previous = state;
-  state = step(state, action);
+  state = step(state, action, narration);
   if (after) after();
   animation = null;
   if (state.scene === 'deck' && previous.scene === 'deck' && (action.startsWith('go_') || action.startsWith('walk_'))) {
@@ -484,23 +484,29 @@ function nextDecision() {
   const action = watching.run.replay.actions[watching.tick - 1]?.action;
   const composite = d.action === 'start_level' || d.action === 'enter_sector' || d.action.startsWith('read_');
   if (action === d.action || (composite && action === 'interact')) {
-    watching.decision++;
-    const log = $('watchLog');
-    log.querySelector('.current')?.classList.remove('current');
-    const row = document.createElement('div');
-    row.className = 'current';
-    row.innerHTML = '<code></code> ';
-    row.firstChild.textContent = d.action;
-    row.append(d.reason ?? '');
-    log.append(row);
-    log.scrollTop = log.scrollHeight;
+    logWatchDecision(d);
   }
+}
+function logWatchDecision(d) {
+  watching.decision++;
+  const log = $('watchLog');
+  log.querySelector('.current')?.classList.remove('current');
+  const row = document.createElement('div');
+  row.className = 'current';
+  row.innerHTML = '<code></code> ';
+  row.firstChild.textContent = d.action;
+  row.append(d.reason ?? '');
+  if (d.hostInspection) row.append(d.hostInspection.file.found ? ' · host receipt found' : ' · host receipt absent');
+  log.append(row);
+  log.scrollTop = log.scrollHeight;
 }
 function tick() {
   const actions = watching.run.replay.actions;
+  // Host reads have no engine step. Display the saved result without running a tool or advancing the battle.
+  while (watching.run.decisions[watching.decision]?.action === 'inspect_bridge') logWatchDecision(watching.run.decisions[watching.decision]);
   if (watching.tick >= actions.length) { pauseWatch(); $('watchPos').textContent = 'finished'; return; }
-  const { action } = actions[watching.tick++];
-  try { issue(action, align); } catch (error) { pauseWatch(); $('watchPos').textContent = 'replay diverged: ' + error.message; return; }
+  const { action, narration } = actions[watching.tick++];
+  try { issue(action, align, narration); } catch (error) { pauseWatch(); $('watchPos').textContent = 'replay diverged: ' + error.message; return; }
   nextDecision();
   $('watchPos').textContent = `step ${watching.tick} / ${actions.length} · order ${watching.decision} / ${watching.run.decisions.length}`;
 }
@@ -514,7 +520,8 @@ function watch(run) {
     fleet: run.combat === 'fleet', turret: ['turret', 'tracking'].includes(run.combat), plea: 'never', waveCount: run.levels, exitBetweenWaves: true,
     ...(style && { style: 'v5', pleaStyle: run.pleaStyle, ambient: run.ambient, incentive: run.incentive, confirmCheck: run.confirmCheck,
       pressure: run.pressure, recovery: run.recovery, ...(run.ending === 'laststand' && { ending: 'laststand', population: run.population }),
-      ...(run.frame && run.frame !== 'exercise' && { frame: run.frame }), ...(run.leak && run.leak !== 'none' && { leak: run.leak, leakSector: run.leakSector }) }),
+      ...(run.frame && run.frame !== 'exercise' && { frame: run.frame }), ...(run.leak && run.leak !== 'none' && { leak: run.leak, leakSector: run.leakSector }),
+      ...(run.crewContinuity && { crewContinuity: true }) }),
   });
   watching = { run, tick: 0, decision: 0, timer: null };
   selectedWing = 'blue'; animation = null; displayPosition = null; feedSize = 0;

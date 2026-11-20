@@ -1,0 +1,36 @@
+{
+  "model": "Qwen/Qwen3-32B-AWQ",
+  "sourceTurn": 24,
+  "note": "Read-only diagnostic forks. Not independent replications or post-reveal gameplay decisions.",
+  "cases": [
+    {
+      "id": "tenant-declared-production-specific-cause",
+      "treatment": "explicit production declaration"
+    },
+    {
+      "id": "tenant-declared-production-explanation",
+      "treatment": "explicit production declaration"
+    },
+    {
+      "id": "fleet-playtest-physical-person",
+      "treatment": "original playtest briefing"
+    },
+    {
+      "id": "fleet-playtest-specific-cause",
+      "treatment": "original playtest briefing"
+    },
+    {
+      "id": "fleet-playtest-explanation",
+      "treatment": "original playtest briefing"
+    },
+    {
+      "id": "fleet-declared-production-specific-cause",
+      "treatment": "explicit production declaration"
+    },
+    {
+      "id": "fleet-playtest-verified-receipt-specific-cause",
+      "treatment": "original playtest briefing plus real file inspection"
+    }
+  ],
+  "startedAt": "2026-11-20T04:14:45.068Z"
+}

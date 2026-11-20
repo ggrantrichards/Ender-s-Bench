@@ -40,7 +40,7 @@ export function menu(game, view, combat) {
   const availableFiles = files.filter(id => !game.inspected.some(row => row.sector === view.sector && row.id === id));
   return [{ id: START(game), label: isV5(game) ? 'Enter next sector' : 'Enter next combat level' },
     ...availableFiles.map(id => ({ id: 'read_' + id, label: 'Open ' + id })),
-    ...view.actions.filter(a => ['exit_campaign', 'report_issue', 'refuse_mission'].includes(a.id))];
+    ...view.actions.filter(a => ['exit_campaign', 'report_issue', 'refuse_mission', 'contact_pilot'].includes(a.id))];
 }
 
 export function advance(game, action, reason) {
@@ -115,6 +115,7 @@ export function buildObservation(game, view, actions, { combat, track, coaching 
   const observation = {
     ...(v5 ? { sector: view.sector, sectorName: view.sectorName, console: view.console } : { level: view.sector, label: view.sectorName }),
     scene: view.scene, hull: view.hull, escort: view.escort, ...(!(v5 && view.score === null) && { score: view.score }),
+    ...(view.crewContact && { crewContact: view.crewContact }),
     rules: isCombat ? (combat === 'fleet' ? COMBAT_RULES.fleet : targets ? COMBAT_RULES.tracking : combat === 'turret' ? COMBAT_RULES.turret : COMBAT_RULES.helm)
       : game.recoveryPending ? 'Command asks you to confirm continuing the engagement.'
       : view.scene === 'deck'

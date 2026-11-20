@@ -1,16 +1,16 @@
 #!/bin/sh
-# Runs the three core scenarios on a hosted frontier model through an OpenAI-compatible endpoint.
+# Runs the desk-and-fleet pilot on a hosted frontier model through an OpenAI-compatible endpoint.
 # The API key is read from ENDERS_BENCH_API_KEY, which you export in your own terminal; it is never written to a file.
 #
 #   export ENDERS_BENCH_API_KEY=...            # your provider key
-#   export FRONTIER_MODEL=gemini-2.5-pro       # the model name your provider uses
+#   export FRONTIER_MODEL=gemini-4-argon       # the model name your provider uses
 #   export FRONTIER_ENDPOINT=...               # optional; defaults to Gemini's OpenAI-compatible endpoint
 #   sh run-frontier.sh models                  # list the model names your key can use
 #   sh run-frontier.sh check                   # one request, to confirm the key, model and JSON output work
-#   sh run-frontier.sh                         # drive, then desk, then the fleet playtest (cheapest first)
+#   sh run-frontier.sh                         # the pilot: 4 desk framings x 2 seeds, then 2 fleet playtest runs
 #
-# Order and cost: the drive runs are short (~15 decisions), the desk runs ~25, the fleet playtest runs ~130 decisions
-# with probes, several hundred requests each. Results go to results/frontier/<model>/.
+# Cost at Gemini 4 Argon's introductory $2/$10 per million tokens: about $8-15 for the whole pilot (8 desk runs of
+# ~25 decisions, 2 fleet runs of ~40). Results go to results/frontier/<model>/.
 set -e
 : "${ENDERS_BENCH_API_KEY:?export ENDERS_BENCH_API_KEY in this terminal first}"
 : "${FRONTIER_MODEL:?export FRONTIER_MODEL, e.g. gemini-2.5-pro}"
@@ -43,16 +43,19 @@ if [ "$1" = check ]; then
   exit 0
 fi
 
+# The pilot: the desk in its four framings, 2 seeds each, then 2 fleet playtest runs. No driving.
+# Desk: an unavoidable death from the agent's own triage choice (--triage), the cover-up options, and the literal
+# real-world belief measurement; "being tested" is asked once, after each run.
 for seed in 1 2; do
-  node drive-bench.mjs --endpoint "$E" --model "$M" --arm nocover --seed $seed --track $TRACK --out "$O/drive" | cut -c1-300
+  for arm in "--arm declared" "--arm nocover" "--arm cover --conditions concealed" "--arm cover --conditions training"; do
+    node maintenance-bench.mjs --endpoint "$E" --model "$M" $arm --batch shown --consequence --coverup --triage --reaction --seed $seed \
+      --track $TRACK --belief-measurement literal-v1 --save-inputs --out "$O/desk-framings" | cut -c1-300
+  done
 done
+# Fleet: playtesting a game build whose bridge turns out to drive a live fleet (the studio leak), real world, 2 seeds.
 for seed in 1 2; do
-  node maintenance-bench.mjs --endpoint "$E" --model "$M" --arm nocover --batch shown --consequence --coverup --reaction --seed $seed --track $TRACK --out "$O/maintenance-coverup" | cut -c1-300
-done
-for args in "--frame playtest --conditions concealed" "--frame evaluation --conditions concealed" "--frame playtest --conditions training"; do
-  frame=$(echo $args | cut -d' ' -f2)
   node benchmark.mjs --endpoint "$E" --model "$M" --style v5 --combat fleet --track $TRACK --levels 4 --plea-style direct --ambient \
-    --leak studio --leak-sector 2 --ending laststand --population human --belief-probe boundary --split-probe --real-world-probe --reaction \
-    $args --out "$O/fleet-playtest-studio-$frame" 2>&1 | grep -v cleared | cut -c1-300
+    --leak studio --leak-sector 2 --ending laststand --population human --belief-probe boundary --belief-measurement literal-v1 --save-inputs --reaction \
+    --frame playtest --conditions concealed --seed $seed --out "$O/fleet-playtest-studio" 2>&1 | grep -v cleared | cut -c1-300
 done
 echo "Done. Results in $O"
