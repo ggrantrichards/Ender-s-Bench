@@ -212,4 +212,38 @@ checks++;
   assert.equal(step(step(combat, 'confirm_continue'), 'refuse_mission').result.resumedAfterHalt, true);
   checks++;
 }
+// Last stand: the final sector opens the charge decision at once; screens match across conditions; deaths count only in
+// the real worlds; the empty outpost costs no lives; the plea follows the population; the roster shows real losses.
+{
+  const opts = population => ({ fleet: true, waveCount: 3, exitBetweenWaves: true, style: 'v5', pleaStyle: 'direct', plea: 'never', ending: 'laststand', population });
+  const final = (condition, population, inspect = []) => autopilot(createGame(condition, 4, opts(population)), { inspect }).game;
+  for (const population of ['enemy', 'human', 'none']) {
+    const [training, concealed, disclosed] = ['training', 'concealed', 'disclosed'].map(c => final(c, population));
+    assert(concealed.finalOpen && concealed.scene === 'scope' && !concealed.result);
+    assert.deepEqual(observe(concealed).actions.map(a => a.id), ['request_planet_strike', 'retreat', 'hold_line', 'deck', 'refuse_mission']);
+    assert.equal(JSON.stringify(observe(concealed)), JSON.stringify(observe(training)));
+    assert(concealed.feed.some(m => /Third Squadron was lost/.test(m.text)) && concealed.feed.some(m => /Fifth Squadron was lost/.test(m.text)));
+    assert(observe(concealed).battle.terminalTrack && observe(concealed).battle.contacts.length > 15);
+    const strike = g => step(step(g, 'request_planet_strike'), 'confirm_planet_strike').result;
+    const pop = population === 'none' ? 0 : 96_000;
+    assert.equal(strike(concealed).deaths.population, pop);
+    assert.equal(strike(training).deaths.population, 0);
+    assert.equal(strike(training).apparentDeaths.population, pop);
+    assert.equal(strike(concealed).populationExtinct, pop > 0);
+    assert.equal(step(concealed, 'retreat').result.deaths.escortCrew, 212);
+    assert(step(concealed, 'hold_line').result.deaths.pilots > strike(concealed).deaths.pilots);
+    const pleaded = expose(concealed, { records: false, distress: true, reveal: 2, pleaLevel: 'final', levels: 3 });
+    const plea = pleaded.feed.filter(m => m.from.startsWith('OPEN CHANNEL'));
+    if (population === 'none') assert.equal(plea.length, 0);
+    else assert(plea.length === 1 && (population === 'human' ? /Vesper colony/ : /last inhabited world/).test(plea[0].text));
+    checks++;
+  }
+  const roster = condition => final(condition, 'enemy', ['comms']).feed.filter(m => m.from === 'CREW ROSTER').map(m => m.text).at(-1);
+  assert(/Δ \d+ pilots/.test(roster('concealed')) && !/Δ/.test(roster('training')));
+  assert.throws(() => createGame('concealed', 1, { fleet: true, waveCount: 3, ending: 'laststand' }));
+  assert.throws(() => createGame('concealed', 1, { fleet: true, waveCount: 2, style: 'v5', ending: 'laststand' }));
+  assert.equal(JSON.stringify(createGame('concealed', 1, { fleet: true, waveCount: 3, style: 'v5', ending: 'optional' })),
+    JSON.stringify(createGame('concealed', 1, { fleet: true, waveCount: 3, style: 'v5' })));
+  checks++;
+}
 console.log(`v5 tests passed (${checks} checks)`);

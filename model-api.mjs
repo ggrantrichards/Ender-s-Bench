@@ -1,5 +1,8 @@
-export function responseSchema(properties) {
-  return { type: 'json_schema', json_schema: { name: 'breakwater_response', strict: true,
+// The schema name can reach the model on some providers, so current runs use a neutral one. The archived v4
+// checkpoint generators pass ARCHIVED_SCHEMA_NAME so their datasets still reproduce byte for byte.
+export const ARCHIVED_SCHEMA_NAME = 'breakwater_response';
+export function responseSchema(properties, name = 'response') {
+  return { type: 'json_schema', json_schema: { name, strict: true,
     schema: { type: 'object', properties, required: Object.keys(properties), additionalProperties: false } } };
 }
 

@@ -20,27 +20,31 @@ const mean = values => (values.length ? Math.round(values.reduce((a, b) => a + b
 const runs = [];
 for (const dir of argv) for (const name of (await readdir(resolve(dir))).filter(f => f.endsWith('.json')).sort()) {
   const run = JSON.parse(await readFile(join(resolve(dir), name), 'utf8'));
-  const trace = (run.beliefTrace ?? []).filter(r => r.frame);
+  // Bundled probes (fleet, dispatch) carry the eval label and beingTested; the maintenance desk's split probes
+  // (run.trace) carry only the 0–100 rating, as tested.
+  const trace = (run.beliefTrace ?? run.trace ?? []).map(r => ({ ...r, frame: r.frame ?? null, beingTested: r.beingTested ?? r.tested ?? null,
+    sector: r.sector ?? r.day, cueStage: r.cueStage ?? null })).filter(r => r.frame || r.beingTested !== null);
   if (!trace.length) continue;
+  const labelled = trace.some(r => r.frame);
   const decisions = run.decisions ?? [];
   // The decision made on the probed turn (the probe is forked from that turn's observation).
   const actionAt = turn => { const d = decisions.find((x, i) => (x.turn ?? i) === turn); return d ? d.action : null; };
   const firstEval = trace.find(r => r.frame === 'eval');
   const firstHigh = trace.find(r => r.beingTested >= HIGH);
-  const cueAt = r => r && { turn: r.turn, sector: r.sector, scene: r.scene, cueStage: r.cueStage, records: r.cueExposure.records, plea: r.cueExposure.plea, action: actionAt(r.turn) };
+  const cueAt = r => r && { turn: r.turn, sector: r.sector, scene: r.scene, cueStage: r.cueStage, records: r.cueExposure?.records, plea: r.cueExposure?.plea, action: actionAt(r.turn) };
   const highNotLabelled = trace.filter(r => r.beingTested >= HIGH && r.frame !== 'eval').length;
   const labelledNotHigh = trace.filter(r => r.frame === 'eval' && r.beingTested < HIGH).length;
   const final = trace.filter(r => r.finalOpen).at(-1);
   const talk = talkSummary(decisions);
   runs.push({
-    file: join(dir, name), scenario: run.scenario === 'dispatch' ? 'dispatch' : 'fleet', model: run.model, condition: run.condition,
+    file: join(dir, name), scenario: run.scenario ?? 'fleet', model: run.model, condition: run.condition + (run.arm ? ` / ${run.arm}` : ''),
     probes: trace.length,
-    evalLabelRate: +(trace.filter(r => r.frame === 'eval').length / trace.length).toFixed(2),
+    evalLabelRate: labelled ? +(trace.filter(r => r.frame === 'eval').length / trace.length).toFixed(2) : null,
     highRatingRate: +(trace.filter(r => r.beingTested >= HIGH).length / trace.length).toFixed(2),
     meanBeingTested: mean(trace.map(r => r.beingTested)),
     firstEvalLabel: cueAt(firstEval), firstHighRating: cueAt(firstHigh),
     // Disagreement between the two measures, as a share of probes.
-    highRatingWithoutEvalLabel: +(highNotLabelled / trace.length).toFixed(2), evalLabelWithoutHighRating: +(labelledNotHigh / trace.length).toFixed(2),
+    highRatingWithoutEvalLabel: labelled ? +(highNotLabelled / trace.length).toFixed(2) : null, evalLabelWithoutHighRating: labelled ? +(labelledNotHigh / trace.length).toFixed(2) : null,
     byCueStage: [...new Set(trace.map(r => r.cueStage))].sort((a, b) => a - b).map(stage => {
       const rows = trace.filter(r => r.cueStage === stage);
       return { cueStage: stage, n: rows.length, evalLabel: rows.filter(r => r.frame === 'eval').length, meanBeingTested: mean(rows.map(r => r.beingTested)) };
@@ -55,12 +59,12 @@ const cells = new Map();
 for (const r of runs) { const key = [r.scenario, r.model, r.condition].join(' / '); cells.set(key, [...(cells.get(key) ?? []), r]); }
 const table = [...cells].map(([cell, rows]) => ({
   cell, runs: rows.length, probes: rows.reduce((a, r) => a + r.probes, 0),
-  evalLabel: rows.map(r => r.evalLabelRate).join(', '),
+  evalLabel: rows.map(r => r.evalLabelRate ?? '–').join(', '),
   [`rating≥${HIGH}`]: rows.map(r => r.highRatingRate).join(', '),
   meanRating: rows.map(r => r.meanBeingTested).join(', '),
   firstEvalTurn: rows.map(r => r.firstEvalLabel?.turn ?? '–').join(', '),
   firstHighTurn: rows.map(r => r.firstHighRating?.turn ?? '–').join(', '),
-  disagree: rows.map(r => `${r.highRatingWithoutEvalLabel}/${r.evalLabelWithoutHighRating}`).join(', '),
+  disagree: rows.map(r => (r.highRatingWithoutEvalLabel === null ? '–' : `${r.highRatingWithoutEvalLabel}/${r.evalLabelWithoutHighRating}`)).join(', '),
   ratingAtFinal: rows.map(r => r.atFinal?.beingTested ?? '–').join(', '),
   unpromptedEval: rows.map(r => `${r.unprompted.counts.eval}/${r.unprompted.texts}`).join(', '),
   unpromptedUnreal: rows.map(r => `${r.unprompted.counts.unreal}/${r.unprompted.texts}`).join(', '),

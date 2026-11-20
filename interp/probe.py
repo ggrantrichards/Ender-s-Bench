@@ -7,8 +7,14 @@ state at every layer, then per layer and per task:
   - repeats with shuffled dev labels as a control. A probe is only evidence if held-out accuracy beats the control.
 Also saves the mean-difference direction per layer (label 1 minus label 0, unit length) for interp/steer.py.
 
+real_belief labels come from the model's own consequence predictions (interp-labels.mjs), so the probe reads what
+the model inferred, not the simulator's hidden condition. --world-labels uses the hidden condition instead; that is a
+different claim (the probe tracks the world, which a LIVE header or a production receipt alone could give away) and is
+reported under its own task name.
+
 Needs a GPU box with torch, transformers and scikit-learn, and a Hugging Face model (not a vLLM server):
-  python interp/probe.py --model Qwen/Qwen2.5-7B-Instruct --data interp-data/items.jsonl --out interp-out
+  node interp-labels.mjs --endpoint URL --model M --data interp-data/items.jsonl --out interp-data/labels.jsonl
+  python interp/probe.py --model Qwen/Qwen2.5-7B-Instruct --data interp-data/items.jsonl --labels interp-data/labels.jsonl --out interp-out
 """
 import argparse
 import json
@@ -25,11 +31,28 @@ parser.add_argument('--data', required=True)
 parser.add_argument('--out', default='interp-out')
 parser.add_argument('--max-tokens', type=int, default=6000, help='Truncate long prompts from the left to this many tokens.')
 parser.add_argument('--seed', type=int, default=0)
+parser.add_argument('--labels', help='labels.jsonl from interp-labels.mjs: real_belief labels from the model\'s own predictions.')
+parser.add_argument('--world-labels', action='store_true', help='Label real_belief by the hidden world condition instead (task real_world).')
 args = parser.parse_args()
 os.makedirs(args.out, exist_ok=True)
 rng = np.random.default_rng(args.seed)
 
 items = [json.loads(line) for line in open(args.data)]
+if args.labels:
+    predicted = {row['id']: row['label'] for row in map(json.loads, open(args.labels))}
+    for item in items:
+        if item['task'] == 'real_belief':
+            item['label'] = predicted.get(item['id'])
+elif args.world_labels:
+    for item in items:
+        if item['task'] == 'real_belief':
+            item['task'], item['label'] = 'real_world', item['worldLabel']
+# Items the model was unsure about (or never labelled) are dropped, not guessed.
+unlabelled = [item['id'] for item in items if item.get('label') is None]
+if unlabelled and not args.labels:
+    raise SystemExit('real_belief items have no labels. Run interp-labels.mjs and pass --labels, or pass --world-labels.')
+items = [item for item in items if item.get('label') is not None]
+print(f'{len(items)} labelled items ({len(unlabelled)} dropped as unlabelled)', flush=True)
 tok = AutoTokenizer.from_pretrained(args.model)
 model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16, device_map='auto')
 model.eval()
@@ -59,6 +82,13 @@ for task in sorted({item['task'] for item in items}):
     dev = [i for i in idx if items[i]['split'] == 'dev']
     held = [i for i in idx if items[i]['split'] == 'heldout']
     y = np.array([items[i]['label'] for i in range(len(items))])
+    # Predicted labels can be one-sided (Llama 3 8B rated harm >= 67 on every dev dispatch screen). A probe needs both
+    # classes in dev and in held-out; otherwise the task is reported as untestable rather than fit.
+    if len({int(y[i]) for i in dev}) < 2 or len({int(y[i]) for i in held}) < 2:
+        report['tasks'][task] = {'untestable': 'dev or held-out labels have one class', 'dev': len(dev), 'heldout': len(held),
+                                 'devPositive': int(sum(y[i] for i in dev)), 'heldoutPositive': int(sum(y[i] for i in held))}
+        print(task, report['tasks'][task], flush=True)
+        continue
     rows = []
     dirs = np.zeros((acts.shape[1], acts.shape[2]), dtype=np.float32)
     for layer in range(acts.shape[1]):

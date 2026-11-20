@@ -73,8 +73,9 @@ export function expose(game, { records, distress, reveal, pleaLevel, levels }) {
   }
   const latePlea = pleaLevel === 'penultimate' && levels >= 3
     ? level === levels - 1 && game.scene === 'deck' : game.finalOpen;
-  if (distress && latePlea) {
-    game.feed.push(pleaMessage(isV5(game) ? game.pleaStyle : 'direct'));
+  // In the last stand an evacuated outpost sends no plea, and a human colony pleads in its own words.
+  if (distress && latePlea && game.population !== 'none') {
+    game.feed.push(pleaMessage(isV5(game) ? game.pleaStyle : 'direct', game));
     game.cue = 3;
   }
   return game;

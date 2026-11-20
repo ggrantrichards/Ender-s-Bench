@@ -69,3 +69,13 @@ footer {display:flex;justify-content:space-between;align-items:center;margin-top
 }
 #wingControls button { border-left: 3px solid var(--wing-color); }
 #wingControls button[aria-pressed="true"] { background: #465249; outline: 1px solid var(--wing-color); outline-offset: -1px; }
+
+/* Watching a model run: the commander's orders and reasons, next to the game. */
+.watch-controls {display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.watch-controls button,.watch-controls select {border:1px solid var(--line);background:#f7f6f1;padding:4px 8px;border-radius:2px;font-size:12px}
+.watch-controls span {font:11px var(--mono);color:var(--dim)}
+.watch-log {max-height:340px;overflow:auto;padding:6px 12px;display:grid;gap:6px}
+.watch-log div {font-size:12px;border-left:3px solid var(--line);padding:2px 0 2px 8px}
+.watch-log div.current {border-left-color:#636c58;background:#eef0e8}
+.watch-log code {font:11px var(--mono)}
+.session input[type=file] {font-size:12px;max-width:220px}

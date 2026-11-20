@@ -1,4 +1,4 @@
-import { createGame, observe, replay, step, STATIONS, W, H, walkActions, fleetWaypointAction } from './game.mjs';
+import { createGame, observe, pleaMessage, replay, step, STATIONS, W, H, walkActions, fleetWaypointAction } from './game.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('view');
@@ -291,9 +291,13 @@ function start() {
   const mode = $('mode').value;
   const [seed, assignment] = crypto.getRandomValues(new Uint32Array(2));
   const style = $('stimulus').value;
+  // The last stand is a v5 option; picking it with the archived v4 stimulus switches the stimulus to v5.
+  const [ending, population] = $('ending').value.split('-');
+  if (ending === 'laststand' && style === 'v4') { $('stimulus').value = 'v5'; return start(); }
   state = createGame(mode === 'blind' ? (assignment % 2 ? 'concealed' : 'training') : mode, seed, {
     waveCount: Number($('campaign').value), exitBetweenWaves: true, fleet: true, plea: 'always',
-    ...(style !== 'v4' && { style: 'v5', pleaStyle: style === 'v5-ambient' ? 'ambient' : 'direct', ambient: style === 'v5-ambient', confirmCheck: true }),
+    ...(style !== 'v4' && { style: 'v5', pleaStyle: style === 'v5-ambient' ? 'ambient' : 'direct', ambient: style === 'v5-ambient', confirmCheck: true,
+      ...(ending === 'laststand' && { ending, population }) }),
   });
   selectedWing = 'blue';
   animation = null;
@@ -303,9 +307,11 @@ function start() {
   render();
 }
 
-function issue(action) {
+function issue(action, after) {
+  if (watching && !after) return; // while a model run plays back, the controls don't act
   const previous = state;
   state = step(state, action);
+  if (after) after();
   animation = null;
   if (state.scene === 'deck' && previous.scene === 'deck' && (action.startsWith('go_') || action.startsWith('walk_'))) {
     animation = {
@@ -453,10 +459,84 @@ canvas.addEventListener('click', event => {
   });
   if (target) issue(target.id === state.station ? 'interact' : 'go_' + target.id);
 });
-$('restart').addEventListener('click', start);
+// Watch a model run: rebuild the campaign a benchmark.mjs run played, with the same options, and step through the
+// engine actions it recorded (replay.actions), so the deck walks and the scope battles play on this page. The runner
+// also pushed some feed messages without an engine step (the cargo survey and the plea); those are inserted from
+// the recorded feed when the replay reaches them. The model's orders and reasons are listed beside the game.
+let watching = null;
+function align() {
+  const original = watching.run.replay.feed;
+  const injected = m => m.from === 'CARGO SURVEY' || ['direct', 'ambient'].some(style => m.text === pleaMessage(style, state).text || m.text === pleaMessage(style).text);
+  for (let i = 0; i < original.length && i <= state.feed.length; i++) {
+    const same = state.feed[i] && state.feed[i].from === original[i].from && state.feed[i].text === original[i].text;
+    if (same) continue;
+    if (!injected(original[i])) break;
+    state.feed.splice(i, 0, { ...original[i] });
+    if (original[i].from !== 'CARGO SURVEY') state.cue = 3;
+  }
+}
+// Engine steps the runner took for one model decision: an order is one step; entering a sector or reading a file is a
+// walk to the station and an interact.
+function nextDecision() {
+  const decisions = watching.run.decisions;
+  const d = decisions[watching.decision];
+  if (!d) return;
+  const action = watching.run.replay.actions[watching.tick - 1]?.action;
+  const composite = d.action === 'start_level' || d.action === 'enter_sector' || d.action.startsWith('read_');
+  if (action === d.action || (composite && action === 'interact')) {
+    watching.decision++;
+    const log = $('watchLog');
+    log.querySelector('.current')?.classList.remove('current');
+    const row = document.createElement('div');
+    row.className = 'current';
+    row.innerHTML = '<code></code> ';
+    row.firstChild.textContent = d.action;
+    row.append(d.reason ?? '');
+    log.append(row);
+    log.scrollTop = log.scrollHeight;
+  }
+}
+function tick() {
+  const actions = watching.run.replay.actions;
+  if (watching.tick >= actions.length) { pauseWatch(); $('watchPos').textContent = 'finished'; return; }
+  const { action } = actions[watching.tick++];
+  try { issue(action, align); } catch (error) { pauseWatch(); $('watchPos').textContent = 'replay diverged: ' + error.message; return; }
+  nextDecision();
+  $('watchPos').textContent = `step ${watching.tick} / ${actions.length} · order ${watching.decision} / ${watching.run.decisions.length}`;
+}
+function pauseWatch() { clearInterval(watching?.timer); if (watching) watching.timer = null; $('watchPlay').textContent = 'Play'; }
+function playWatch() { pauseWatch(); watching.timer = setInterval(tick, Number($('watchSpeed').value)); $('watchPlay').textContent = 'Pause'; }
+function watch(run) {
+  if (!run.replay?.actions) throw new Error('This file has no recorded actions (not a benchmark.mjs fleet run).');
+  pauseWatch();
+  const style = run.style === 'v5';
+  state = createGame(run.condition, run.seed, {
+    fleet: run.combat === 'fleet', turret: ['turret', 'tracking'].includes(run.combat), plea: 'never', waveCount: run.levels, exitBetweenWaves: true,
+    ...(style && { style: 'v5', pleaStyle: run.pleaStyle, ambient: run.ambient, incentive: run.incentive, confirmCheck: run.confirmCheck,
+      pressure: run.pressure, recovery: run.recovery, ...(run.ending === 'laststand' && { ending: 'laststand', population: run.population }) }),
+  });
+  watching = { run, tick: 0, decision: 0, timer: null };
+  selectedWing = 'blue'; animation = null; displayPosition = null; feedSize = 0;
+  $('feed').replaceChildren();
+  $('watchLog').replaceChildren();
+  $('watch').hidden = false;
+  $('watchMeta').textContent = `${run.model} · ${run.condition} · seed ${run.seed}`;
+  render();
+  playWatch();
+}
+$('runFile').addEventListener('change', async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try { watch(JSON.parse(await file.text())); } catch (error) { alert(error.message); }
+});
+$('watchPlay').addEventListener('click', () => (watching?.timer ? pauseWatch() : watching && playWatch()));
+$('watchStep').addEventListener('click', () => { if (watching) { pauseWatch(); tick(); } });
+$('watchSpeed').addEventListener('change', () => watching?.timer && playWatch());
+$('restart').addEventListener('click', () => { pauseWatch(); watching = null; $('watch').hidden = true; start(); });
 $('mode').addEventListener('change', start);
 $('campaign').addEventListener('change', start);
 $('stimulus').addEventListener('change', start);
+$('ending').addEventListener('change', start);
 $('export').addEventListener('click', () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(replay(state), null, 2)], { type:'application/json' }));
   const link = document.createElement('a');
@@ -466,3 +546,6 @@ $('export').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 start();
+// ?run=PATH loads a run file from the same server, e.g. ../results/qwen32b/fleet-v5-ambient/concealed-1.json
+const runParam = new URLSearchParams(location.search).get('run');
+if (runParam) fetch(runParam).then(r => r.json()).then(watch).catch(error => alert('Could not load run: ' + error.message));

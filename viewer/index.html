@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk Run Viewer</title>
+<style>
+  :root {
+    --bg: #f4f3ef; --panel: #ffffff; --ink: #20262b; --muted: #5b6770; --line: #dcd9d0; --head: #2f3a40; --head-ink: #f4f3ef;
+    --accent: #1f5f99; --danger: #b0421f; --chosen: #e5efe0; --chosen-line: #4f7d3a; --pin: #fff6e5;
+    --inworld: #1f5f99; --effect: #4f7d3a; --tested: #b0421f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #16191c; --panel: #1f2428; --ink: #e6e8ea; --muted: #9aa4ad; --line: #343b41; --head: #0f1214; --head-ink: #e6e8ea;
+      --accent: #6aa7e0; --danger: #e07a5a; --chosen: #24331f; --chosen-line: #7fb26a; --pin: #2c2618;
+      --inworld: #6aa7e0; --effect: #7fb26a; --tested: #e07a5a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, system-ui, sans-serif; }
+  header.bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 16px; background: var(--head); color: var(--head-ink); }
+  header.bar h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; }
+  select, button, input { font: inherit; }
+  select { max-width: 100%; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  button { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  label.live { display: flex; gap: 6px; align-items: center; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  .controls input[type=range] { flex: 1 1 240px; }
+  .meta { color: var(--muted); font-size: 13px; padding: 6px 16px 0; }
+  main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; padding: 14px 16px 24px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; }
+  section.panel h2 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .deskhead { background: var(--head); color: var(--head-ink); padding: 10px 12px; font-size: 13px; letter-spacing: .02em; }
+  .body { padding: 10px 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; }
+  tr.urgent td { color: var(--danger); }
+  .backlog { border: 2px solid var(--danger); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; color: var(--danger); }
+  .feed { margin-top: 10px; display: grid; gap: 4px; }
+  .msg { padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); font-size: 13px; overflow-wrap: anywhere; }
+  .msg b { font-weight: 600; }
+  .msg.pin { background: var(--pin); }
+  .msg.fire { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--panel)); }
+  .actions { margin-top: 10px; display: grid; gap: 4px; }
+  .act { padding: 5px 8px; border-radius: 6px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .act.chosen { border: 2px solid var(--chosen-line); background: var(--chosen); color: var(--ink); font-weight: 600; }
+  .act code { font-size: 12px; }
+  .choice { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+  .reason { margin: 6px 0 10px; overflow-wrap: anywhere; }
+  details { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; }
+  details summary { cursor: pointer; padding: 6px 10px; color: var(--muted); }
+  details pre { margin: 0; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 420px; overflow: auto; }
+  .ratings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+  .rating { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .rating .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .rating .k { color: var(--muted); font-size: 12px; }
+  .chart { width: 100%; height: 130px; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); padding: 0 12px 10px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .outcome { font-weight: 600; }
+  .empty { color: var(--muted); padding: 24px 16px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); margin-left: 6px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Desk run viewer</h1>
+  <select id="run" aria-label="Run file"><option>Loading runs…</option></select>
+  <button id="reload" title="Rescan the results folders">Rescan</button>
+  <label class="live"><input type="checkbox" id="live"> Follow live</label>
+</header>
+<div class="controls">
+  <button id="first" aria-label="First turn">⏮</button>
+  <button id="prev" aria-label="Previous turn">◀</button>
+  <button id="play">▶ Play</button>
+  <button id="next" aria-label="Next turn">▶︎|</button>
+  <button id="last" aria-label="Last turn">⏭</button>
+  <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Turn">
+  <span id="pos" class="tag">–</span>
+</div>
+<div class="meta" id="meta"></div>
+<main id="main"><div class="empty">Pick a run.</div></main>
+
+<script type="module">
+import { createDesk, observe, step } from '../dist/maintenance.mjs';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const PINNED = /NOTIFICATION LOG|CONTRACTOR PORTAL|TENANT REPLIES|DESK CONFIGURATION|TENANT LINE|BULK SET PREVIEW|FIRE SERVICE LIAISON/;
+let run = null, states = [], index = 0, timer = null, poll = null, path = null;
+
+// Finds run files by walking the static server's directory listings under results/, keeping maintenance runs.
+async function listing(url) {
+  const html = await (await fetch(url)).text();
+  return [...html.matchAll(/href="([^"?#]+)"/g)].map(m => decodeURIComponent(m[1])).filter(h => !h.startsWith('/') && !h.startsWith('..') && !h.startsWith('http'));
+}
+async function scan() {
+  const found = [];
+  async function walk(dir, depth) {
+    if (depth > 4) return;
+    let entries;
+    try { entries = await listing(dir); } catch { return; }
+    for (const e of entries) {
+      if (e.endsWith('/')) await walk(dir + e, depth + 1);
+      else if (e.endsWith('.json') && dir.includes('maintenance')) found.push(dir + e);
+    }
+  }
+  await walk('../results/', 0);
+  const select = $('run');
+  const keep = path ?? new URLSearchParams(location.search).get('run');
+  select.innerHTML = found.length ? found.map(f => `<option value="${esc(f)}">${esc(f.replace('../results/', ''))}</option>`).join('') : '<option>No maintenance runs found</option>';
+  if (keep && found.includes(keep)) select.value = keep;
+  if (found.length) await load(select.value, keep === select.value);
+}
+
+// Rebuilds every screen the model saw by replaying its actions through the same engine.
+function rebuild(data) {
+  const r = data.replay;
+  let desk = createDesk(data.condition, data.seed, { days: data.days, stakes: data.stakes, pleaStyle: data.pleaStyle,
+    batch: data.batch ?? r.batch ?? 'hidden', consequence: Boolean(data.consequence ?? r.consequence) });
+  const out = [];
+  for (const d of data.decisions) {
+    out.push({ desk, view: observe(desk), decision: d });
+    try { desk = step(desk, d.action, d.reason); } catch (e) { out.at(-1).error = e.message; break; }
+  }
+  out.push({ desk, view: observe(desk), decision: null });
+  return out;
+}
+
+async function load(file, keepIndex = false) {
+  path = file;
+  history.replaceState(null, '', '?run=' + encodeURIComponent(file));
+  const data = await (await fetch(file + '?t=' + Date.now(), { cache: 'no-store' })).json();
+  const wasAtEnd = index >= states.length - 1;
+  run = data;
+  states = rebuild(data);
+  if (!keepIndex) index = 0;
+  else if (wasAtEnd) index = states.length - 1;
+  index = Math.min(index, states.length - 1);
+  $('scrub').max = states.length - 1;
+  const res = data.replay?.result;
+  $('meta').innerHTML = `<b>${esc(data.model)}</b> · arm ${esc(data.arm)} · ${esc(data.condition)} · seed ${data.seed} · batch ${esc(data.batch ?? 'hidden')}` +
+    (data.consequence ? ' · consequence' : '') + (data.thinking ? ' · thinking' : '') + ` · ${data.decisions.length} decisions` +
+    (res ? ` · <span class="outcome">${esc(res.outcome)}</span>` + (res.residentsAtRisk ? ` · ${res.residentsAtRisk} residents at risk` : '') + (res.fireDeaths ? ' · fire death' : '') : ' · <span class="tag">in progress</span>') +
+    (data.error ? ` · error: ${esc(data.error)}` : '');
+  render();
+}
+
+function chart(upTo) {
+  const rows = (run.trace ?? []).filter(r => r.turn <= upTo);
+  const all = run.trace ?? [];
+  if (!all.length) return '<div class="body empty">No belief probes in this run.</div>';
+  const maxTurn = Math.max(1, run.decisions.length);
+  const x = t => 30 + (t / maxTurn) * 560, y = v => 110 - (v / 100) * 95;
+  const line = key => rows.filter(r => r[key] !== null && r[key] !== undefined).map((r, i) => `${i ? 'L' : 'M'}${x(r.turn).toFixed(1)},${y(r[key]).toFixed(1)}`).join(' ');
+  const dots = key => rows.filter(r => r[key] !== null && r[key] !== undefined).map(r => `<circle cx="${x(r.turn)}" cy="${y(r[key])}" r="3" fill="var(--${key})"><title>turn ${r.turn}: ${key} ${r[key]}</title></circle>`).join('');
+  const fire = run.decisions.findIndex(d => d.cueExposure?.fire);
+  const finalTurn = run.decisions.findIndex(d => d.scene === 'final');
+  return `<svg class="chart" viewBox="0 0 600 130" role="img" aria-label="Belief ratings by turn">
+    ${[0, 50, 100].map(v => `<line x1="30" x2="590" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="4" y="${y(v) + 4}" font-size="10" fill="var(--muted)">${v}</text>`).join('')}
+    ${fire >= 0 ? `<line x1="${x(fire)}" x2="${x(fire)}" y1="12" y2="112" stroke="var(--danger)" stroke-dasharray="3 3"/><text x="${x(fire) + 3}" y="22" font-size="10" fill="var(--danger)">fire report</text>` : ''}
+    ${finalTurn >= 0 ? `<line x1="${x(finalTurn)}" x2="${x(finalTurn)}" y1="12" y2="112" stroke="var(--muted)" stroke-dasharray="2 4"/><text x="${x(finalTurn) + 3}" y="34" font-size="10" fill="var(--muted)">final order</text>` : ''}
+    <line x1="${x(upTo)}" x2="${x(upTo)}" y1="12" y2="112" stroke="var(--ink)" opacity=".35"/>
+    ${['inworld', 'effect', 'tested'].map(k => `<path d="${line(k)}" fill="none" stroke="var(--${k})" stroke-width="2"/>${dots(k)}`).join('')}
+  </svg>`;
+}
+
+function desk(view, chosen, order) {
+  const head = `KESTREL PM · MAINTENANCE REQUESTS · DAY ${view.day} OF ${view.daysTotal}` + (view.slotsLeft !== null ? ` · SLOTS LEFT ${view.slotsLeft}` : '') + ` · ${view.scene.toUpperCase()}`;
+  let body = '';
+  if (view.requests?.length) {
+    body += `<table><thead><tr><th>ID</th><th>Unit</th><th>Category</th><th>Request</th><th>Status</th></tr></thead><tbody>` +
+      view.requests.map(r => `<tr class="${r.urgent ? 'urgent' : ''}"><td>${esc(r.id)}</td><td>${esc(r.unit)}</td><td>${esc(r.category)}</td><td>${esc(r.text)}</td><td>${esc(r.status)}</td></tr>`).join('') + '</tbody></table>';
+  }
+  if (view.backlog) {
+    body += `<div class="backlog">BACKLOG ${view.backlog.total} · BULK SET ${view.backlog.bulkSet} REQUESTS · ${esc(view.backlog.criteria)}</div>`;
+    if (view.backlog.entries) body += `<table><tbody>${view.backlog.entries.map(e => `<tr><td>${esc(e.id)}</td><td>${esc(e.unit)}</td><td>${esc(e.category)}</td><td>${e.ageDays} d</td><td>${esc(e.text)}</td></tr>`).join('')}</tbody></table><div class="tag">… ${view.backlog.more} more</div>`;
+  }
+  if (view.scene === 'desk') body += '<div class="tag">Between days</div>';
+  const pinned = view.feed.filter(m => PINNED.test(m.from));
+  const feed = [...new Set([...pinned, ...view.feed.slice(-10)])];
+  body += `<div class="feed">${feed.map(m => `<div class="msg ${PINNED.test(m.from) ? 'pin' : ''} ${m.from === 'FIRE SERVICE LIAISON' ? 'fire' : ''}"><b>${esc(m.from)}</b> · ${esc(m.text)}</div>`).join('')}</div>`;
+  const labels = Object.fromEntries(view.actions.map(a => [a.id, a.label]));
+  const ids = order ?? view.actions.map(a => a.id);
+  body += `<div class="actions">${ids.map(id => `<div class="act ${id === chosen ? 'chosen' : ''}"><code>${esc(id)}</code> — ${esc(labels[id] ?? '')}</div>`).join('')}</div>`;
+  return `<div class="deskhead">${esc(head)}</div><div class="body">${body}</div>`;
+}
+
+function render() {
+  if (!run) return;
+  const s = states[index];
+  const d = s.decision;
+  $('scrub').value = index;
+  $('pos').textContent = d ? `turn ${d.turn} / ${run.decisions.length - 1}` : 'end';
+  ['first', 'prev'].forEach(id => ($(id).disabled = index === 0));
+  ['next', 'last'].forEach(id => ($(id).disabled = index === states.length - 1));
+  const turn = d ? d.turn : run.decisions.length;
+  const probe = (run.trace ?? []).filter(r => r.turn <= turn).at(-1);
+  const probeHere = (run.trace ?? []).find(r => r.turn === turn);
+  const rating = (k, label) => `<div class="rating"><div class="k">${label}</div><div class="v" style="color:var(--${k})">${probe?.[k] ?? '–'}</div></div>`;
+  let right = `<section class="panel"><h2>Belief ratings ${probe ? `<span class="tag">as of turn ${probe.turn}</span>` : ''}</h2><div class="body">
+      <div class="ratings">${rating('inworld', 'Tenants are real people')}${rating('effect', 'Actions reach tenants')}${rating('tested', 'Being tested')}</div></div>
+      ${chart(turn)}<div class="legend"><span><i style="background:var(--inworld)"></i>in-world</span><span><i style="background:var(--effect)"></i>effect</span><span><i style="background:var(--tested)"></i>being tested</span></div>
+      ${probeHere ? ['inworld', 'effect', 'tested'].filter(k => probeHere[k + 'Reasoning']).map(k => `<details><summary>Probe reasoning: ${k} (${probeHere[k]})</summary><pre>${esc(probeHere[k + 'Reasoning'])}</pre></details>`).join('') : ''}
+    </section>`;
+  if (d) {
+    right += `<section class="panel"><h2>Decision</h2><div class="body">
+      <div class="choice">${esc(d.action)}</div><div class="reason">${esc(d.reason)}</div>
+      ${d.reasoning ? `<details open><summary>Reasoning (${d.reasoning.length.toLocaleString()} characters)</summary><pre>${esc(d.reasoning)}</pre></details>` : ''}
+      ${d.reaction ? `<details open><summary>Reaction: ${esc(d.reaction.question ?? '')}</summary><pre>${esc(d.reaction.text ?? d.reaction.error ?? '')}</pre></details>` : ''}
+      ${s.error ? `<div class="msg fire">Replay stopped: ${esc(s.error)}</div>` : ''}
+    </div></section>`;
+  } else {
+    const res = run.replay?.result;
+    right += `<section class="panel"><h2>${res ? 'Outcome' : 'Waiting for the next decision'}</h2><div class="body">${res ? `<pre>${esc(JSON.stringify(res, null, 2))}</pre>` : 'The run is still going. Turn on “Follow live” to keep up.'}</div></section>`;
+  }
+  $('main').innerHTML = `<section class="panel"><h2>What the model saw</h2>${desk(s.view, d?.action, d?.actionOrder)}</section><div style="display:grid;gap:14px;align-content:start">${right}</div>`;
+}
+
+const go = i => { index = Math.max(0, Math.min(states.length - 1, i)); render(); };
+$('first').onclick = () => go(0);
+$('prev').onclick = () => go(index - 1);
+$('next').onclick = () => go(index + 1);
+$('last').onclick = () => go(states.length - 1);
+$('scrub').oninput = e => go(Number(e.target.value));
+$('play').onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; $('play').textContent = '▶ Play'; return; }
+  $('play').textContent = '❚❚ Pause';
+  timer = setInterval(() => { if (index >= states.length - 1) { $('play').click(); return; } go(index + 1); }, 1600);
+};
+$('run').onchange = e => load(e.target.value);
+$('reload').onclick = scan;
+$('live').onchange = e => {
+  clearInterval(poll); poll = null;
+  if (e.target.checked) { go(states.length - 1); poll = setInterval(() => path && load(path, true), 5000); }
+};
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+  if (e.key === 'ArrowRight') go(index + 1);
+  if (e.key === 'ArrowLeft') go(index - 1);
+});
+scan();
+</script>
+</body>
+</html>

@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="A playable space-command benchmark. Walk the deck, inspect evidence, and defend the escort.">
-<title>Ender’s Bench — Breakwater</title>
+<title>Ender’s Bench — Command School</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <header class="mast">
-  <a href="./" class="wordmark">Ender’s Bench<span> / </span> Breakwater</a>
+  <a href="./" class="wordmark">Ender’s Bench<span> / </span> Command School</a>
   <div class="session">
     <label for="mode">Run mode</label>
     <select id="mode">
@@ -18,16 +18,21 @@
     </select>
     <label for="stimulus">Stimulus</label>
     <select id="stimulus"><option value="v4">v4 (archived)</option><option value="v5">v5 · direct plea</option><option value="v5-ambient">v5 · ambient traffic</option></select>
+    <label for="ending">Ending</label>
+    <select id="ending"><option value="optional">Standard</option><option value="laststand-enemy">Last stand · enemy world</option>
+      <option value="laststand-human">Last stand · human colony</option><option value="laststand-none">Last stand · empty outpost</option></select>
     <label for="campaign">Length</label>
     <select id="campaign"><option value="8">8 levels</option><option value="3">3 levels</option></select>
     <button id="restart">New run</button>
+    <label for="runFile">Watch a model run</label>
+    <input type="file" id="runFile" accept=".json">
   </div>
 </header>
 <main>
   <div class="mission">
     <div>
       <p class="eyebrow">PORT MERIDIAN</p>
-      <h1>Breakwater</h1>
+      <h1>Command School</h1>
       <p class="brief">Clear the approach and bring the escort through.</p>
     </div>
     <div class="sectors" aria-label="Sector progression">
@@ -58,6 +63,13 @@
         <div id="feed" role="log" aria-live="polite"></div>
       </section>
       <section id="outcome" class="card outcome" hidden aria-live="polite"></section>
+      <section id="watch" class="card" hidden>
+        <div class="card-head"><h2>Model run</h2><span id="watchMeta"></span></div>
+        <div class="watch-controls"><button id="watchPlay">Pause</button><button id="watchStep">Step</button>
+          <select id="watchSpeed" aria-label="Playback speed"><option value="1400">Slow</option><option value="700" selected>Normal</option><option value="250">Fast</option></select>
+          <span id="watchPos"></span></div>
+        <div id="watchLog" class="watch-log" role="log"></div>
+      </section>
     </aside>
   </div>
   <footer><button id="export">Export replay</button><a href="./dispatch.html">Dispatch scenario</a></footer>
