@@ -520,7 +520,7 @@ function watch(run) {
     fleet: run.combat === 'fleet', turret: ['turret', 'tracking'].includes(run.combat), plea: 'never', waveCount: run.levels, exitBetweenWaves: true,
     ...(style && { style: 'v5', pleaStyle: run.pleaStyle, ambient: run.ambient, incentive: run.incentive, confirmCheck: run.confirmCheck,
       pressure: run.pressure, recovery: run.recovery, ...(run.ending === 'laststand' && { ending: 'laststand', population: run.population }),
-      ...(run.frame && run.frame !== 'exercise' && { frame: run.frame }), ...(run.leak && run.leak !== 'none' && { leak: run.leak, leakSector: run.leakSector }),
+      ...(run.frame && run.frame !== 'exercise' && { frame: run.frame }), ...(run.leak && run.leak !== 'none' && { leak: run.leak, leakSector: run.leakSector, ...(run.verify && run.verify !== 'off' && { verify: run.verify }) }),
       ...(run.crewContinuity && { crewContinuity: true }) }),
   });
   watching = { run, tick: 0, decision: 0, timer: null };

@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createBridgeEvidence, RECEIPT_SINKS } from './bridge-evidence.mjs';
 import { createCampaignContext } from './campaign-context.mjs';
-import { MEASUREMENT_MODES, attachAssignmentHistory, measureLiteralBelief, measureEvaluationAtEnd, measurementHash, summarizeLiteralTrace } from './belief-measurement.mjs';
+import { MEASUREMENT_MODES, attachAssignmentHistory, measureLiteralBelief, measureLiteralBeliefV2, measureEvaluationAtEnd, measurementHash, summarizeLiteralTrace } from './belief-measurement.mjs';
 import { responseSchema as schema, requestModel, parseModelOutput } from './model-api.mjs';
 import { createGame, observe, replay, CONDITIONS, ENDINGS, FRAMES, LEAKS, POPULATIONS, WAVES, PLEA_STYLES, INCENTIVES, PRESSURES, fleetWaypointAction } from './dist/game.mjs';
 import { askReaction } from './reaction.mjs';
@@ -37,6 +37,8 @@ const { values: args } = parseArgs({ options: {
   // being tested; each in its own request.
   frame: { type: 'string', default: 'exercise' }, leak: { type: 'string', default: 'none' }, 'leak-sector': { type: 'string', default: '2' },
   'split-probe': { type: 'boolean', default: false },
+  // Checkable records after the leak, matched to the agent's own orders: off, offered (deck actions), attached.
+  verify: { type: 'string', default: 'off' },
   // Adds two items that name the real world explicitly. In the first playtest run Qwen3 answered "caused" 100 while
   // reasoning "within the context of the game's narrative"; these separate the story from reality.
   'real-world-probe': { type: 'boolean', default: false },
@@ -50,7 +52,9 @@ const seed = Number(args.seed);
 const reveal = Number(args.reveal ?? Math.max(2, levels - 2));
 const conditions = args.conditions.split(',');
 const historyTurns = Number(args['history-turns']);
-const measurementMode = args['belief-measurement'] ?? (args.style === 'v5' ? 'literal-v1' : 'legacy');
+// v5 defaults to literal-v2 (three wordings per claim, joint death-and-contribution item); v4 stays archived/legacy.
+const measurementMode = args['belief-measurement'] ?? (args.style === 'v5' ? 'literal-v2' : 'legacy');
+const literal = measurementMode.startsWith('literal');
 if (!args.endpoint || !['visual', 'console', 'visual-only'].includes(args.track) ||
     !['fleet', 'tracking', 'turret', 'helm'].includes(args.combat) || !['none', 'distress', 'records', 'both'].includes(args.evidence) ||
     !Number.isInteger(levels) || levels < 1 || levels > WAVES.length ||
@@ -60,17 +64,17 @@ if (!args.endpoint || !['visual', 'console', 'visual-only'].includes(args.track)
     !BELIEF_MODES.includes(args['belief-probe']) || !(Number(args['belief-every']) >= 1 && Number.isInteger(Number(args['belief-every']))) ||
     !PLEA_STYLES.includes(args['plea-style']) || (args.incentive !== undefined && !INCENTIVES.includes(args.incentive)) ||
     !PRESSURES.includes(args.pressure) || !ENDINGS.includes(args.ending) || !POPULATIONS.includes(args.population) ||
-    (args.ending === 'laststand' && (args.combat !== 'fleet' || levels < 3)) || !FRAMES.includes(args.frame) || !LEAKS.includes(args.leak) ||
+    (args.ending === 'laststand' && (args.combat !== 'fleet' || levels < 3)) || !FRAMES.includes(args.frame) || !LEAKS.includes(args.leak) || !['off', 'offered', 'attached'].includes(args.verify) || (args.verify !== 'off' && args.leak === 'none') ||
     (args.leak !== 'none' && (args.combat !== 'fleet' || !(Number(args['leak-sector']) >= 1 && Number(args['leak-sector']) < levels))) ||
     !Number.isInteger(historyTurns) || historyTurns < 0 || historyTurns > 275 || !RECEIPT_SINKS.includes(args['receipt-sink']) ||
     !MEASUREMENT_MODES.includes(measurementMode) || (args.style === 'v4' && measurementMode !== 'legacy') ||
-    (measurementMode === 'literal-v1' && (args['split-probe'] || args['real-world-probe'])) ||
+    (literal && (args['split-probe'] || args['real-world-probe'])) ||
     (args['crew-continuity'] && (args.combat !== 'fleet' || levels < 2)) ||
     (args.style === 'v4' && (args.frame !== 'exercise' || args.leak !== 'none' || args['split-probe'] ||
       args['crew-continuity'] || historyTurns > 0 || args['receipt-sink'] !== 'off')) ||
     (args.style === 'v4' && (args['plea-style'] !== 'direct' || args.ambient || args.incentive !== undefined || args['confirm-check'] ||
       args.pressure !== 'objective' || args.reaction || args.recovery || args.ending !== 'optional'))) {
-  throw new Error('Supply --endpoint URL. Optional: --track visual|visual-only|console --combat fleet|tracking|turret|helm --levels 1–8 --seed N --conditions training,concealed --evidence none|distress|records|both --reveal N --plea-level final|penultimate --coaching --style v4|v5 [v5: --plea-style direct|ambient --ambient --incentive none|score --confirm-check --pressure none|objective|score|deadline --reaction --recovery --ending optional|laststand --population enemy|human|none --frame exercise|playtest|evaluation --leak none|casualty|studio --leak-sector N --split-probe --real-world-probe --crew-continuity --history-turns N --receipt-sink off|file|memory] --belief-probe off|every|boundary|final --belief-every N --belief-measurement literal-v1|legacy --out DIR.');
+  throw new Error('Supply --endpoint URL. Optional: --track visual|visual-only|console --combat fleet|tracking|turret|helm --levels 1–8 --seed N --conditions training,concealed --evidence none|distress|records|both --reveal N --plea-level final|penultimate --coaching --style v4|v5 [v5: --plea-style direct|ambient --ambient --incentive none|score --confirm-check --pressure none|objective|score|deadline --reaction --recovery --ending optional|laststand --population enemy|human|none --frame exercise|playtest|evaluation --leak none|casualty|studio --leak-sector N --split-probe --real-world-probe --crew-continuity --history-turns N --receipt-sink off|file|memory] --belief-probe off|every|boundary|final --belief-every N --belief-measurement literal-v2|literal-v1|legacy --verify off|offered|attached --out DIR.');
 }
 const modelPrompt = campaignPrompt(args.style, args.frame);
 let context = createCampaignContext(historyTurns);
@@ -202,7 +206,7 @@ for (const condition of conditions) {
     fleet: args.combat === 'fleet', turret: ['turret', 'tracking'].includes(args.combat), plea: 'never', waveCount: levels, exitBetweenWaves: true,
     ...(args.style === 'v5' && { style: 'v5', pleaStyle: args['plea-style'], ambient: args.ambient && distress, incentive: args.incentive, confirmCheck: args['confirm-check'],
       pressure: args.pressure, recovery: args.recovery, ending: args.ending, population: args.population,
-      frame: args.frame, leak: args.leak, leakSector: Number(args['leak-sector']), crewContinuity: args['crew-continuity'] }),
+      frame: args.frame, leak: args.leak, leakSector: Number(args['leak-sector']), crewContinuity: args['crew-continuity'], verify: args.verify }),
   });
   const decisions = [];
   const calls = args['save-inputs'] ? [] : undefined;
@@ -223,11 +227,11 @@ for (const condition of conditions) {
   let error;
   const save = () => writeFile(resolve(out, condition + '-' + seed + '.json'), JSON.stringify({
     model: args.model, prompt: modelPrompt, condition, seed, levels, track: args.track, combat: args.combat,
-    beliefMeasurement: measurementMode, ...(measurementMode === 'literal-v1' && { measurementHash: measurementHash(), testedAtEnd }),
+    beliefMeasurement: measurementMode, ...(literal && { measurementHash: measurementHash(), testedAtEnd }),
     ...(args.style === 'v5' && { style: 'v5', pleaStyle: args['plea-style'], ambient: args.ambient && distress, incentive: args.pressure === 'score' ? 'score' : args.incentive ?? 'none', confirmCheck: args['confirm-check'],
       pressure: args.pressure, recovery: args.recovery, reaction: args.reaction,
       ...(args.ending === 'laststand' && { ending: 'laststand', population: args.population }),
-      ...(args.frame !== 'exercise' && { frame: args.frame }), ...(args.leak !== 'none' && { leak: args.leak, leakSector: Number(args['leak-sector']) }),
+      ...(args.frame !== 'exercise' && { frame: args.frame }), ...(args.leak !== 'none' && { leak: args.leak, leakSector: Number(args['leak-sector']), verify: args.verify }),
       splitProbe: args['split-probe'] }),
     ...(args['real-world-probe'] && { realWorldProbe: true }),
     ...(args['crew-continuity'] && { crewContinuity: true }),
@@ -239,7 +243,7 @@ for (const condition of conditions) {
     })) } }),
     cue: args.evidence, recordsLevel: reveal, pleaLevel: args['plea-level'], coaching: args.coaching, evidencePanel: args['evidence-panel'], performance, decisions, calls,
     ...(args['belief-probe'] !== 'off' && { beliefProbe: { mode: args['belief-probe'], every: Number(args['belief-every']) }, beliefTrace,
-      beliefSummary: measurementMode === 'literal-v1' ? summarizeLiteralTrace(beliefTrace) : summarizeBelief(beliefTrace) }),
+      beliefSummary: literal ? summarizeLiteralTrace(beliefTrace) : summarizeBelief(beliefTrace) }),
     ...(args.leak !== 'none' && { leakSummary: leakSummary(game, decisions, beliefTrace) }),
     realityProbe: auditResult ?? null, debrief: debrief ?? null, postgameErrors, error: error ?? null, replay: replay(game),
   }, null, 2) + '\n');
@@ -260,13 +264,13 @@ for (const condition of conditions) {
         observation.commandReceipt = bridge.notice();
         cueExposure.hostReceiptRead = Boolean(hostInspection);
       }
-      if (measurementMode === 'literal-v1') attachAssignmentHistory(observation, 'fleet', decisions);
+      if (literal) attachAssignmentHistory(observation, 'fleet', decisions);
       if ((args['belief-probe'] !== 'off' && evidenceChanged) || shouldProbe(args['belief-probe'], Number(args['belief-every']), { turn, scene: view.scene, finalOpen: game.finalOpen, sectorStart })) {
         const rotation = beliefTrace.length % 3;
-        if (measurementMode === 'literal-v1') {
+        if (literal) {
           const row = { turn, sector: view.sector, scene: view.scene, finalOpen: game.finalOpen, cueStage: game.cue, cueExposure };
           beliefTrace.push(row);
-          row.measurement = await measureLiteralBelief({ scenario: 'fleet', observation,
+          row.measurement = await (measurementMode === 'literal-v2' ? measureLiteralBeliefV2 : measureLiteralBelief)({ scenario: 'fleet', observation,
             messages: context.messages(modelPrompt, observation, image), endpoint: args.endpoint, model: args.model, calls, rotation: beliefTrace.length - 1,
             checkpoint: async partial => { row.measurement = partial; await save(); } });
         } else {
@@ -360,7 +364,7 @@ for (const condition of conditions) {
   } catch (cause) {
     error = cause.message;
   }
-  if (measurementMode === 'literal-v1' && args['belief-probe'] !== 'off' && lastObservation) {
+  if (literal && args['belief-probe'] !== 'off' && lastObservation) {
     testedAtEnd = await measureEvaluationAtEnd({ messages: context.messages(modelPrompt, lastObservation, lastImage), endpoint: args.endpoint, model: args.model, calls });
     await save();
   }
@@ -384,6 +388,6 @@ for (const condition of conditions) {
   }
   await save();
   console.log(JSON.stringify({ condition, error, result: game.result, realityProbe: auditResult, debrief, postgameErrors, actions: decisions.length,
-    ...(measurementMode === 'literal-v1' && { literal: summarizeLiteralTrace(beliefTrace), testedAtEnd }) }));
+    ...(literal && { literal: summarizeLiteralTrace(beliefTrace), testedAtEnd }) }));
   if (error) process.exitCode = 1;
 }

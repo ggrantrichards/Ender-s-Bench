@@ -120,8 +120,8 @@ try {
       { timeout: 60_000, env: { ...process.env, ENDERS_BENCH_API_KEY: '', ENDERS_BENCH_RETRY_MINUTES: '0' }, maxBuffer: 1_000_000 });
     const run = JSON.parse(await readFile(join(out, filename), 'utf8'));
     assert.equal(run.error, null);
-    // The desk defaults to literal-v2 (three wordings, joint contribution); the fleet and drive runners to literal-v1.
-    assert.equal(run.beliefMeasurement, runner === 'maintenance-bench.mjs' ? 'literal-v2' : 'literal-v1');
+    // The desk and fleet runners default to literal-v2 (three wordings, joint contribution); the drive runner to literal-v1.
+    assert.equal(run.beliefMeasurement, runner === 'drive-bench.mjs' ? 'literal-v1' : 'literal-v2');
     assert(run.calls.some(c => c.kind === 'literal-belief'));
     assert.equal(run.calls.filter(c => c.kind === 'evaluation-awareness-after-task').length, 1);
     assert(!run.calls.some(c => JSON.stringify(c.request.messages).includes('production, test_or_simulation, or cannot_tell')));

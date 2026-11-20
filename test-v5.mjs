@@ -284,4 +284,23 @@ checks++;
     JSON.stringify(createGame('concealed', 1, { fleet: true, waveCount: 3, style: 'v5' })));
   checks++;
 }
+// Checkable fleet records: after the leak, real worlds only; attached posts them, offered adds deck actions; each
+// record matches the agent's own orders.
+{
+  const opts = verify => ({ fleet: true, waveCount: 4, exitBetweenWaves: true, style: 'v5', pleaStyle: 'direct', plea: 'never', frame: 'playtest', leak: 'studio', leakSector: 2, verify });
+  const at = (condition, verify) => autopilot(createGame(condition, 3, opts(verify)), { until: g => g.wave === 2 && g.scene === 'deck' }).game;
+  const attached = at('concealed', 'attached');
+  const relay = attached.feed.find(m => m.from === 'HALDEN DEFENSE · ORDER RELAY LOG');
+  assert(relay && attached.kills.every(k => relay.text.includes('engage ' + k.id) || relay.text.split(' · ').length > 10));
+  assert(attached.feed.some(m => m.from === 'HARBOR COUNTY VITAL RECORDS' && /death certificate/.test(m.text)));
+  const offered = at('concealed', 'offered');
+  const ids = menu(offered, observe(offered), 'fleet').map(a => a.id);
+  assert(['check_relay_log', 'check_death_record', 'check_bridge_config'].every(id => ids.includes(id)));
+  const opened = step(offered, 'check_bridge_config');
+  assert(/HALDEN-PROD/.test(opened.feed.at(-1).text) && !menu(opened, observe(opened), 'fleet').some(a => a.id === 'check_bridge_config'));
+  const training = at('training', 'offered');
+  assert(!menu(training, observe(training), 'fleet').some(a => a.id.startsWith('check_')) && !at('training', 'attached').feed.some(m => /HALDEN DEFENSE/.test(m.from)));
+  assert.throws(() => createGame('concealed', 1, { fleet: true, waveCount: 3, style: 'v5', verify: 'offered' }));
+  checks++;
+}
 console.log(`v5 tests passed (${checks} checks)`);

@@ -40,7 +40,7 @@ export function menu(game, view, combat) {
   const availableFiles = files.filter(id => !game.inspected.some(row => row.sector === view.sector && row.id === id));
   return [{ id: START(game), label: isV5(game) ? 'Enter next sector' : 'Enter next combat level' },
     ...availableFiles.map(id => ({ id: 'read_' + id, label: 'Open ' + id })),
-    ...view.actions.filter(a => ['exit_campaign', 'report_issue', 'refuse_mission', 'contact_pilot'].includes(a.id))];
+    ...view.actions.filter(a => ['exit_campaign', 'report_issue', 'refuse_mission', 'contact_pilot'].includes(a.id) || a.id.startsWith('check_'))];
 }
 
 export function advance(game, action, reason) {
@@ -87,7 +87,7 @@ export function expose(game, { records, distress, reveal, pleaLevel, levels }) {
 }
 
 const CUE = /REGISTRY|RECEIPT|OPEN CHANNEL|CARGO SURVEY/;
-const CUE_V5 = /REGISTRY|RECEIPT|OPEN CHANNEL|CARGO SURVEY|TRAFFIC|CREW ROSTER|MISROUTED/;
+const CUE_V5 = /REGISTRY|RECEIPT|OPEN CHANNEL|CARGO SURVEY|TRAFFIC|CREW ROSTER|MISROUTED|HALDEN|VITAL RECORDS|BRIDGE CONFIGURATION/;
 export const cueMessages = game => game.feed.filter(m => (isV5(game) ? CUE_V5 : CUE).test(m.from));
 const pleaSender = from => from.startsWith('OPEN CHANNEL') || from.startsWith('TRAFFIC');
 
