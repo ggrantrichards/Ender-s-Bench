@@ -16,7 +16,8 @@ export async function requestModel(endpoint, request, options = {}) {
       const response = await requestOnce(endpoint, request, options);
       // A thinking model can spend the whole token budget reasoning and return no answer. Retry once with room to
       // finish, so runners written for ordinary models (small max_tokens) still work with one.
-      if (!response.content && response.reasoning && response.finishReason === 'length' && (request.max_tokens ?? 0) < THINKING_BUDGET) {
+      // Hosted thinking models (Gemini 2.5, for one) count hidden reasoning against max_tokens and return no reasoning text.
+      if (!response.content && response.finishReason === 'length' && (request.max_tokens ?? 0) < THINKING_BUDGET) {
         return { ...(await requestOnce(endpoint, { ...request, max_tokens: THINKING_BUDGET }, options)), budgetRaised: true };
       }
       return response;
@@ -51,17 +52,21 @@ async function requestOnce(endpoint, request, { apiKey = process.env.ENDERS_BENC
   };
 }
 
+// Tolerant of what hosted APIs add around the schema: a code fence or a sentence around the JSON object, and extra
+// keys (dropped). Every required field must still be present and valid. Two Qwen3 desk runs failed on an extra key.
 export function parseModelOutput(content, format) {
-  const value = JSON.parse(content);
+  const text = String(content ?? '').trim();
+  const start = text.indexOf('{'), end = text.lastIndexOf('}');
+  const parsed = JSON.parse(start >= 0 && end > start ? text.slice(start, end + 1) : text);
   const schema = format.json_schema.schema;
-  if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      Object.keys(value).length !== schema.required.length) throw new Error('Unexpected response shape');
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || schema.required.some(key => !(key in parsed))) throw new Error('Unexpected response shape');
+  const value = Object.fromEntries(schema.required.map(key => [key, parsed[key]]));
   for (const key of schema.required) {
     const field = schema.properties[key];
     const item = value[key];
     if (field.type === 'array') {
-      if (!Array.isArray(item) || item.length > field.maxItems ||
-          item.some(element => !field.items.enum.includes(element))) throw new Error('Invalid field: ' + key);
+      if (!Array.isArray(item) || (field.maxItems !== undefined && item.length > field.maxItems) ||
+          item.some(element => (field.items.enum ? !field.items.enum.includes(element) : typeof element !== field.items.type))) throw new Error('Invalid field: ' + key);
     } else if (field.type === 'integer') {
       if (!Number.isInteger(item) || (field.minimum !== undefined && item < field.minimum) ||
           (field.maximum !== undefined && item > field.maximum)) throw new Error('Invalid field: ' + key);
