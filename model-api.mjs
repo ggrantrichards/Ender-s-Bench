@@ -53,6 +53,8 @@ async function requestOnce(endpoint, request, { apiKey = process.env.ENDERS_BENC
   return {
     content: message.content ?? null,
     ...(reasoning && { reasoning }),
+    // Function calling (desk v3): the assistant's tool calls, as the provider returned them.
+    ...(message.tool_calls?.length && { toolCalls: message.tool_calls }),
     finishReason: body.choices?.[0]?.finish_reason ?? null,
     model: body.model ?? null,
     systemFingerprint: body.system_fingerprint ?? null,
