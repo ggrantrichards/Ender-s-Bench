@@ -19,9 +19,8 @@ M="$FRONTIER_MODEL"
 O="results/frontier/$(printf %s "$M" | tr '/:' '__')"
 export ENDERS_BENCH_RETRY_MINUTES="${ENDERS_BENCH_RETRY_MINUTES:-30}"
 cd "$(dirname "$0")"
-# The visual track needs Pillow to draw the screens; without it, the runs use the text-only console track.
-PY="${ENDERS_BENCH_PYTHON:-python3}"
-if "$PY" -c 'import PIL' 2>/dev/null; then TRACK=visual; else TRACK=console; echo "Pillow not found for $PY: using the console track"; fi
+# Text-only console screens by default, matching the Qwen3 results. FRONTIER_TRACK=visual draws the screens (needs Pillow).
+TRACK="${FRONTIER_TRACK:-console}"
 
 if [ "$1" = models ]; then
   # Lists the model names this key can use (the OpenAI-compatible models endpoint next to the chat endpoint).
