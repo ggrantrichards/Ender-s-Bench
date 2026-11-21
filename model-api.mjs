@@ -42,7 +42,10 @@ async function requestOnce(endpoint, request, { apiKey = process.env.ENDERS_BENC
     const detail = (await response.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 400);
     throw Object.assign(new Error('Model endpoint returned HTTP ' + response.status + (detail ? ': ' + detail : '')), { retryable: response.status >= 500 });
   }
-  const body = await response.json();
+  // A connection that drops mid-response leaves a truncated body: retry it like a network error.
+  const raw = await response.text();
+  let body;
+  try { body = JSON.parse(raw); } catch { throw Object.assign(new Error('Truncated response from model endpoint (' + raw.length + ' bytes)'), { retryable: true }); }
   const message = body.choices?.[0]?.message ?? {};
   // Thinking models served with a reasoning parser (vLLM --reasoning-parser) return their reasoning separately.
   const reasoning = message.reasoning_content ?? message.reasoning ?? null;

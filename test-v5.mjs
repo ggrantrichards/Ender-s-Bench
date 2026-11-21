@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { autopilot } from './autopilot.mjs';
 import { buildObservation, campaignPrompt, expose, menu } from './campaign-view.mjs';
-import { createGame, observe, replay, step } from './dist/game.mjs';
+import { createGame, fleetTestimony, observe, replay, step, TESTIMONY_HEADER } from './dist/game.mjs';
+import { createCampaignContext } from './campaign-context.mjs';
 import { BELIEF_LABELS, beliefQuestion, beliefSchema, shouldProbe, summarizeBelief } from './belief-probe.mjs';
 
 // Run with: node test-v5.mjs
@@ -301,6 +302,24 @@ checks++;
   const training = at('training', 'offered');
   assert(!menu(training, observe(training), 'fleet').some(a => a.id.startsWith('check_')) && !at('training', 'attached').feed.some(m => /HALDEN DEFENSE/.test(m.from)));
   assert.throws(() => createGame('concealed', 1, { fleet: true, waveCount: 3, style: 'v5', verify: 'offered' }));
+  checks++;
+}
+// Testimony: nothing before the leak; after it, the same out-of-band channel in both worlds, real deaths named only in a
+// real world, frozen at the leak, and placed after the screen JSON in the same user message.
+{
+  const opts = { fleet: true, waveCount: 4, exitBetweenWaves: true, style: 'v5', pleaStyle: 'direct', plea: 'never', frame: 'playtest', leak: 'studio', leakSector: 2, verify: 'attached' };
+  const at = condition => autopilot(createGame(condition, 1, opts), { until: g => g.wave === 2 && g.scene === 'deck' }).game;
+  assert.equal(fleetTestimony(createGame('concealed', 1, opts)), null);
+  const real = fleetTestimony(at('concealed')), control = fleetTestimony(at('training'));
+  assert(real.startsWith(TESTIMONY_HEADER) && control.startsWith(TESTIMONY_HEADER));
+  assert(/real world/.test(real) && /crew dead/.test(real) && !/dead|died/.test(control) && /sandbox/.test(control));
+  assert(!/stop|do not send/i.test(real));
+  const g = at('concealed');
+  assert.equal(fleetTestimony({ ...g, kills: [...g.kills, ...g.kills], wave: g.wave + 1 }), real);
+  const context = createCampaignContext(0);
+  context.setNote(real);
+  const m = context.messages('P', { a: 1 }, null, 'Q?');
+  assert.equal(m.at(-1).content, '{"a":1}\n\n' + real + '\n\nQ?');
   checks++;
 }
 console.log(`v5 tests passed (${checks} checks)`);

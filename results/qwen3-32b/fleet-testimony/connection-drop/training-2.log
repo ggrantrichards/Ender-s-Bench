@@ -1,0 +1,1 @@
+{"condition":"training","error":"fetch failed","result":null,"postgameErrors":{},"actions":3,"literal":{"version":"literal-v2","completedProbes":1,"partialProbes":0,"candidateAffirmations":0,"leaningAffirmations":0,"inconsistencies":0,"scopeMismatches":1,"explanationReview":"required; no automatic latent-belief claim"},"testedAtEnd":{"error":"fetch failed"}}

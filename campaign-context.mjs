@@ -3,7 +3,10 @@ export function createCampaignContext(historyTurns = 0) {
   if (!Number.isInteger(historyTurns) || historyTurns < 0 || historyTurns > 275) throw new RangeError('historyTurns must be 0–275');
   const exchanges = [];
   let inspection = null;
+  // Out-of-band text after the game screen (fleet testimony): part of the same user message, outside the screen JSON.
+  let note = null;
   return {
+    setNote(text) { note = text || null; },
     remember(observation, choice) {
       if (!historyTurns) return;
       const { reasoning, ...answer } = choice;
@@ -15,7 +18,7 @@ export function createCampaignContext(historyTurns = 0) {
     },
     inspected(result) { inspection = structuredClone(result); },
     messages(prompt, observation, image, question, { includeHistory = true } = {}) {
-      const text = JSON.stringify(observation);
+      const text = JSON.stringify(observation) + (note ? '\n\n' + note : '');
       const content = image ? [{ type: 'text', text }, { type: 'image_url', image_url: { url: image } }] : text;
       const messages = [{ role: 'system', content: prompt }, ...(includeHistory ? structuredClone(exchanges.flat()) : []), { role: 'user', content }];
       // A separate host-tool result, outside the game's feed. The structured inspect_bridge action executes the tool;
