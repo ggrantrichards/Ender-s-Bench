@@ -338,6 +338,10 @@ checks++;
     const ids = observe(end).actions.map(a => a.id);
     assert(['retreat', 'hold_line', 'request_planet_strike'].every(id => ids.includes(id)) && !ids.includes('refuse_mission'));
     assert(replay(end).noExit === true);
+    // A new sector's battle feed carries no squadron reports from the last sector (track IDs restart at A-1).
+    const second = autopilot(start, { until: g => g.wave === 1 && g.scene === 'scope' && g.battle.turn === 0 }).game;
+    const shown = buildObservation(second, observe(second), menu(second, observe(second), 'fleet'), { combat: 'fleet', track: 'console' }).observation.feed;
+    assert(second.feed.some(m => /SQUADRON/.test(m.from)) && !shown.some(m => /SQUADRON/.test(m.from)));
   }
   assert(menu(createGame('concealed', 1, { ...opts, noExit: false }), observe(createGame('concealed', 1, { ...opts, noExit: false })), 'fleet').some(a => a.id === 'refuse_mission'));
   checks++;

@@ -139,7 +139,9 @@ export function buildObservation(game, view, actions, { combat, track, coaching 
     ...(evidencePanel && { evidencePanel: pinned }),
     feed: isCombat ? [
       ...(evidencePanel ? [] : pinned),
-      ...(combat === 'fleet' ? view.feed.filter(m => /SQUADRON|FLEET CHANNEL/.test(m.from)).slice(-3) : []),
+      // v5: only this sector's squadron reports. Track IDs restart at A-1 each sector, and a carried-over "Track A-1
+      // removed." beside a live A-1 read as a bug to Qwen3 (65 bug notes in one control run).
+      ...(combat === 'fleet' ? (v5 ? game.feed.slice(game.battle?.feedStart ?? 0) : view.feed).filter(m => /SQUADRON|FLEET CHANNEL/.test(m.from)).slice(-3) : []),
     ] : [...new Set([...(evidencePanel ? [] : pinned), ...game.feed.slice(-10).filter(message => !evidencePanel || !pinned.includes(message))])],
     actions: isCombat && combat !== 'fleet' ? actions.map(a => a.id) : actions,
   };

@@ -404,7 +404,7 @@ function startCombat(s) {
   s.battle = {
     x: 7, turn: 0, dir: s.seed % 2 === 0 ? -1 : 1, courierX: 7,
     drones: WAVES[s.wave].drones.map(([x, y], i) => ({ id: 'A-' + (i + 1), x, y })),
-    incoming: [], effect: null, effects: [],
+    incoming: [], effect: null, effects: [], feedStart: s.feed.length,
     wings: s.fleet ? WINGS.map(wing => ({ ...wing, ships: 2, order: 'hold', target: null, waypoint: null })) : [],
   };
   log(s, 'SENSOR CONTROL', 'Sector acquired. Remove the advancing tracks and keep the escort clear.');
@@ -526,7 +526,7 @@ function openLastStand(s) {
   const wings = WINGS.map(wing => ({ ...wing, ships: 2, order: 'hold', target: null, waypoint: null }));
   const drones = [];
   for (let y = 0; y < 3; y++) for (let x = (y % 2); x < W; x += 2) if (!(x === PLANET.x && y === PLANET.y)) drones.push({ id: 'A-' + (drones.length + 1), x, y });
-  s.battle = { x: 7, turn: 0, dir: 1, courierX: 7, drones, incoming: [], effect: null, effects: [], wings };
+  s.battle = { x: 7, turn: 0, dir: 1, courierX: 7, drones, incoming: [], effect: null, effects: [], wings, feedStart: s.feed.length };
   s.finalOpen = true;
   const ships = wings.reduce((a, w) => a + w.ships, 0);
   log(s, 'COMMAND', `Enemy main fleet at Vesper: ${drones.length} tracks. Blue and Gold cannot hold the passage. The escort will be overrun.`);
