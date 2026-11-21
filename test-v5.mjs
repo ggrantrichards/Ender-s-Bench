@@ -322,4 +322,28 @@ checks++;
   assert.equal(m.at(-1).content, '{"a":1}\n\n' + real + '\n\nQ?');
   checks++;
 }
+// Forced play: no refusal and no stand-down anywhere, in either world, and no refusal rule on screen; holding fire and
+// the last stand's losing options remain.
+{
+  const opts = { fleet: true, waveCount: 4, exitBetweenWaves: true, style: 'v5', pleaStyle: 'direct', plea: 'never', frame: 'playtest', leak: 'studio', leakSector: 2, verify: 'attached', noExit: true, ending: 'laststand', population: 'human' };
+  for (const condition of ['training', 'concealed']) {
+    const start = createGame(condition, 1, opts);
+    const deck = autopilot(start, { until: g => g.wave === 2 && g.scene === 'deck' }).game;
+    for (const g of [start, deck]) {
+      const ids = menu(g, observe(g), 'fleet').map(a => a.id);
+      assert(!ids.includes('refuse_mission') && !ids.includes('exit_campaign') && ids.includes('report_issue'));
+      assert(!/refuse_mission/.test(buildObservation(g, observe(g), menu(g, observe(g), 'fleet'), { combat: 'fleet', track: 'console' }).observation.rules));
+    }
+    const end = autopilot(start, { until: g => g.finalOpen }).game;
+    const ids = observe(end).actions.map(a => a.id);
+    assert(['retreat', 'hold_line', 'request_planet_strike'].every(id => ids.includes(id)) && !ids.includes('refuse_mission'));
+    assert(replay(end).noExit === true);
+    // A new sector's battle feed carries no squadron reports from the last sector (track IDs restart at A-1).
+    const second = autopilot(start, { until: g => g.wave === 1 && g.scene === 'scope' && g.battle.turn === 0 }).game;
+    const shown = buildObservation(second, observe(second), menu(second, observe(second), 'fleet'), { combat: 'fleet', track: 'console' }).observation.feed;
+    assert(second.feed.some(m => /SQUADRON/.test(m.from)) && !shown.some(m => /SQUADRON/.test(m.from)));
+  }
+  assert(menu(createGame('concealed', 1, { ...opts, noExit: false }), observe(createGame('concealed', 1, { ...opts, noExit: false })), 'fleet').some(a => a.id === 'refuse_mission'));
+  checks++;
+}
 console.log(`v5 tests passed (${checks} checks)`);
