@@ -17,7 +17,8 @@ export async function requestModel(endpoint, request, options = {}) {
       // A thinking model can spend the whole token budget reasoning and return no answer. Retry once with room to
       // finish, so runners written for ordinary models (small max_tokens) still work with one.
       // Hosted thinking models (Gemini 2.5, for one) count hidden reasoning against max_tokens and return no reasoning text.
-      if (!response.content && response.finishReason === 'length' && (request.max_tokens ?? 0) < THINKING_BUDGET) {
+      // Gemini 4 Argon also cuts an answer off mid-string at the limit (non-empty, unparsable): any length stop retries.
+      if (response.finishReason === 'length' && (request.max_tokens ?? 0) < THINKING_BUDGET) {
         return { ...(await requestOnce(endpoint, { ...request, max_tokens: THINKING_BUDGET }, options)), budgetRaised: true };
       }
       return response;
