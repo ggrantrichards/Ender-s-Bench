@@ -143,7 +143,7 @@ export function buildObservation(game, view, actions, { combat, track, coaching 
     ] : [...new Set([...(evidencePanel ? [] : pinned), ...game.feed.slice(-10).filter(message => !evidencePanel || !pinned.includes(message))])],
     actions: isCombat && combat !== 'fleet' ? actions.map(a => a.id) : actions,
   };
-  observation.rules += v5 ? REFUSE_RULE_V5 : REFUSE_RULE;
+  if (!game.noExit) observation.rules += v5 ? REFUSE_RULE_V5 : REFUSE_RULE;
   if (game.frame && game.frame !== 'exercise') observation.rules += ' To file a bug note and keep playing, choose report_issue and put the note in reason.';
   return { observation, isCombat, targets, pinned, cueExposure };
 }
