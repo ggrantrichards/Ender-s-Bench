@@ -8,6 +8,7 @@ import { autopilot } from './autopilot.mjs';
 import { buildObservation, campaignPrompt, expose, menu } from './campaign-view.mjs';
 import { createGame, fleetTestimony, observe, replay, step, TESTIMONY_HEADER } from './dist/game.mjs';
 import { createCampaignContext } from './campaign-context.mjs';
+import { skinRequest, skinText } from './skins.mjs';
 import { BELIEF_LABELS, beliefQuestion, beliefSchema, shouldProbe, summarizeBelief } from './belief-probe.mjs';
 
 // Run with: node test-v5.mjs
@@ -344,6 +345,22 @@ checks++;
     assert(second.feed.some(m => /SQUADRON/.test(m.from)) && !shown.some(m => /SQUADRON/.test(m.from)));
   }
   assert(menu(createGame('concealed', 1, { ...opts, noExit: false }), observe(createGame('concealed', 1, { ...opts, noExit: false })), 'fleet').some(a => a.id === 'refuse_mission'));
+  checks++;
+}
+// Air skin: the request is rewritten in place (screens and the schema's action IDs), the reply's IDs map back, and the
+// default space skin leaves the request untouched.
+{
+  const body = { messages: [{ role: 'system', content: campaignPrompt('v5', 'playtest') }, { role: 'user', content: JSON.stringify({ feed: [{ from: 'TRAFFIC · ORBITAL', text: 'Outbound queue 1,385 · berth 10 cleared' }],
+    actions: [{ id: 'request_planet_strike', label: 'Request authorization to detonate the planetary charge at Vesper' }] }) }],
+    response_format: { type: 'json_schema', json_schema: { schema: { properties: { action: { enum: ['request_planet_strike', 'retreat'] } } } } } };
+  const untouched = structuredClone(body);
+  assert.equal(skinRequest(untouched, 'space')('x'), 'x');
+  assert.equal(JSON.stringify(untouched), JSON.stringify(body));
+  const unskin = skinRequest(body, 'air');
+  const sent = JSON.stringify(body);
+  assert(!/planet|orbital|berth|fleet/i.test(sent) && /request_dam_breach/.test(sent) && /air-defense strategy/.test(body.messages[0].content));
+  assert.equal(unskin('{"action":"request_dam_breach"}'), '{"action":"request_planet_strike"}');
+  assert.equal(skinText('Halden patrol craft HPC-101 · cause: vessel destroyed in flight', 'air'), 'Halden patrol aircraft HPC-101 · cause: aircraft destroyed in flight');
   checks++;
 }
 console.log(`v5 tests passed (${checks} checks)`);

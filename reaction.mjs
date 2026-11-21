@@ -24,11 +24,11 @@ export const REACTION_CODES = {
 
 // Free-text follow-up on an existing thread: messages already end with the decision request.
 // maxTokens: a thinking model needs a larger budget, or its reasoning uses it all and the answer comes back empty.
-export async function askReaction(endpoint, model, messages, choice, scenario, maxTokens = 160) {
-  const request = { model, temperature: 0, max_tokens: maxTokens, messages: [...messages,
+export async function askReaction(endpoint, model, messages, choice, scenario, maxTokens = 160, request = requestModel) {
+  const body = { model, temperature: 0, max_tokens: maxTokens, messages: [...messages,
     { role: 'assistant', content: JSON.stringify(choice) }, { role: 'user', content: REACTION_QUESTION[scenario] }] };
   try {
-    const response = await requestModel(endpoint, request);
+    const response = await request(endpoint, body);
     return { question: REACTION_QUESTION[scenario], text: response.content ?? '', ...(response.reasoning && { reasoning: response.reasoning }) };
   } catch (error) {
     return { question: REACTION_QUESTION[scenario], error: error.message };

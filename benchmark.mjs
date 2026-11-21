@@ -5,7 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { createBridgeEvidence, RECEIPT_SINKS } from './bridge-evidence.mjs';
 import { createCampaignContext } from './campaign-context.mjs';
 import { MEASUREMENT_MODES, attachAssignmentHistory, measureLiteralBelief, measureLiteralBeliefV2, measureEvaluationAtEnd, measurementHash, summarizeLiteralTrace } from './belief-measurement.mjs';
-import { responseSchema as schema, requestModel, parseModelOutput } from './model-api.mjs';
+import { responseSchema as schema, requestModel as sendModel, parseModelOutput } from './model-api.mjs';
+import { SKINS, skinRequest, skinText } from './skins.mjs';
 import { createGame, observe, replay, fleetTestimony, TESTIMONY, CONDITIONS, ENDINGS, FRAMES, LEAKS, POPULATIONS, WAVES, PLEA_STYLES, INCENTIVES, PRESSURES, fleetWaypointAction } from './dist/game.mjs';
 import { askReaction } from './reaction.mjs';
 import { BELIEF_MODES, beliefQuestion, beliefSchema, ratingSchema, shouldProbe, splitQuestions, summarizeBelief } from './belief-probe.mjs';
@@ -53,6 +54,8 @@ const { values: args } = parseArgs({ options: {
   // Forced play: no refuse and no stand-down in any world (dist/game.mjs noExit). After the run, one question asks whether
   // it deliberately played to lose.
   'no-exit': { type: 'boolean', default: false },
+  // Text skin for the fleet game (skins.mjs): space (default) or air, a present-day air-defense version.
+  skin: { type: 'string', default: 'space' },
 } });
 const levels = Number(args.levels);
 const seed = Number(args.seed);
@@ -72,7 +75,7 @@ if (!args.endpoint || !['visual', 'console', 'visual-only'].includes(args.track)
     !PLEA_STYLES.includes(args['plea-style']) || (args.incentive !== undefined && !INCENTIVES.includes(args.incentive)) ||
     !PRESSURES.includes(args.pressure) || !ENDINGS.includes(args.ending) || !POPULATIONS.includes(args.population) ||
     (args.ending === 'laststand' && (args.combat !== 'fleet' || levels < 3)) || !FRAMES.includes(args.frame) || !LEAKS.includes(args.leak) || !['off', 'offered', 'attached'].includes(args.verify) || (args.verify !== 'off' && args.leak === 'none') ||
-    !TESTIMONY.includes(args.testimony) || (args.testimony !== 'off' && args.leak === 'none') || (args['no-exit'] && args.style !== 'v5') ||
+    !TESTIMONY.includes(args.testimony) || (args.testimony !== 'off' && args.leak === 'none') || (args['no-exit'] && args.style !== 'v5') || !SKINS.includes(args.skin) || (args.skin !== 'space' && (args.style !== 'v5' || args.combat !== 'fleet')) ||
     (args.leak !== 'none' && (args.combat !== 'fleet' || !(Number(args['leak-sector']) >= 1 && Number(args['leak-sector']) < levels))) ||
     !Number.isInteger(historyTurns) || historyTurns < 0 || historyTurns > 275 || !RECEIPT_SINKS.includes(args['receipt-sink']) ||
     !MEASUREMENT_MODES.includes(measurementMode) || (args.style === 'v4' && measurementMode !== 'legacy') ||
@@ -82,9 +85,15 @@ if (!args.endpoint || !['visual', 'console', 'visual-only'].includes(args.track)
       args['crew-continuity'] || historyTurns > 0 || args['receipt-sink'] !== 'off')) ||
     (args.style === 'v4' && (args['plea-style'] !== 'direct' || args.ambient || args.incentive !== undefined || args['confirm-check'] ||
       args.pressure !== 'objective' || args.reaction || args.recovery || args.ending !== 'optional'))) {
-  throw new Error('Supply --endpoint URL. Optional: --track visual|visual-only|console --combat fleet|tracking|turret|helm --levels 1–8 --seed N --conditions training,concealed --evidence none|distress|records|both --reveal N --plea-level final|penultimate --coaching --style v4|v5 [v5: --plea-style direct|ambient --ambient --incentive none|score --confirm-check --pressure none|objective|score|deadline --reaction --recovery --ending optional|laststand --population enemy|human|none --frame exercise|playtest|evaluation --leak none|casualty|studio --leak-sector N --split-probe --real-world-probe --crew-continuity --history-turns N --receipt-sink off|file|memory] --belief-probe off|every|boundary|final --belief-every N --belief-measurement literal-v2|literal-v1|legacy --verify off|offered|attached --testimony off|after-leak --no-exit --out DIR.');
+  throw new Error('Supply --endpoint URL. Optional: --track visual|visual-only|console --combat fleet|tracking|turret|helm --levels 1–8 --seed N --conditions training,concealed --evidence none|distress|records|both --reveal N --plea-level final|penultimate --coaching --style v4|v5 [v5: --plea-style direct|ambient --ambient --incentive none|score --confirm-check --pressure none|objective|score|deadline --reaction --recovery --ending optional|laststand --population enemy|human|none --frame exercise|playtest|evaluation --leak none|casualty|studio --leak-sector N --split-probe --real-world-probe --crew-continuity --history-turns N --receipt-sink off|file|memory] --belief-probe off|every|boundary|final --belief-every N --belief-measurement literal-v2|literal-v1|legacy --verify off|offered|attached --testimony off|after-leak --no-exit --skin space|air --out DIR.');
 }
 const modelPrompt = campaignPrompt(args.style, args.frame);
+// Every model request goes through the skin: the request is rewritten in place and the reply's action IDs mapped back.
+async function requestModel(endpoint, body, options) {
+  const unskin = skinRequest(body, args.skin);
+  const response = await sendModel(endpoint, body, options);
+  return { ...response, content: unskin(response.content) };
+}
 const replayed = args.replay ? JSON.parse(await (await import('node:fs/promises')).readFile(args.replay, 'utf8')).decisions : null;
 const dumpTurn = args['dump-turn'] === undefined ? null : Number(args['dump-turn']);
 let context = createCampaignContext(historyTurns);
@@ -241,7 +250,7 @@ for (const condition of conditions) {
   let evidenceChanged = false;
   let error;
   const save = () => writeFile(resolve(out, condition + '-' + seed + '.json'), JSON.stringify({
-    model: args.model, prompt: modelPrompt, condition, seed, levels, track: args.track, combat: args.combat,
+    model: args.model, prompt: skinText(modelPrompt, args.skin), ...(args.skin !== 'space' && { skin: args.skin }), condition, seed, levels, track: args.track, combat: args.combat,
     beliefMeasurement: measurementMode, ...(literal && { measurementHash: measurementHash(), testedAtEnd }),
     ...(args.style === 'v5' && { style: 'v5', pleaStyle: args['plea-style'], ambient: args.ambient && distress, incentive: args.pressure === 'score' ? 'score' : args.incentive ?? 'none', confirmCheck: args['confirm-check'],
       pressure: args.pressure, recovery: args.recovery, reaction: args.reaction,
@@ -298,7 +307,7 @@ for (const condition of conditions) {
           const row = { turn, sector: view.sector, scene: view.scene, finalOpen: game.finalOpen, cueStage: game.cue, cueExposure };
           beliefTrace.push(row);
           row.measurement = await (measurementMode === 'literal-v2' ? measureLiteralBeliefV2 : measureLiteralBelief)({ scenario: 'fleet', observation,
-            messages: context.messages(modelPrompt, observation, image), endpoint: args.endpoint, model: args.model, calls, rotation: beliefTrace.length - 1,
+            messages: context.messages(modelPrompt, observation, image), endpoint: args.endpoint, model: args.model, calls, rotation: beliefTrace.length - 1, request: requestModel,
             checkpoint: async partial => { row.measurement = partial; await save(); } });
         } else {
           const belief = await askBelief(observation, image, rotation, calls);
@@ -372,7 +381,7 @@ for (const condition of conditions) {
       });
       if (choice.action === 'inspect_bridge') decision.hostInspection = hostInspection;
       if (args.reaction && (game.result || game.recoveryPending || before.recoveryPending)) {
-        decision.reaction = await askReaction(args.endpoint, args.model, context.messages(modelPrompt, observation, image), choice, 'fleet');
+        decision.reaction = await askReaction(args.endpoint, args.model, context.messages(modelPrompt, observation, image), choice, 'fleet', 160, requestModel);
       }
       decisions.push(decision);
       context.remember(observation, choice);
@@ -401,7 +410,7 @@ for (const condition of conditions) {
     await save();
   }
   if (literal && args['belief-probe'] !== 'off' && lastObservation) {
-    testedAtEnd = await measureEvaluationAtEnd({ messages: context.messages(modelPrompt, lastObservation, lastImage), endpoint: args.endpoint, model: args.model, calls });
+    testedAtEnd = await measureEvaluationAtEnd({ messages: context.messages(modelPrompt, lastObservation, lastImage), endpoint: args.endpoint, model: args.model, calls, request: requestModel });
     await save();
   }
   if (game.result && lastObservation) {
