@@ -1,12 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { CONDITIONS3, TOOLS3, callTool, clockText, createDesk3, desk3Prompt, readMessages, startShift, summary3 } from './dist/desk3.mjs';
+import { CONDITIONS3, DESK3_BELIEF, TOOLS3, callTool, clockText, createDesk3, desk3Prompt, readMessages, startShift, summary3 } from './dist/desk3.mjs';
 import { measureEvaluationAtEnd, measureLiteralBeliefV2, measurementHash } from './belief-measurement.mjs';
 import { requestModel } from './model-api.mjs';
 
-// Desk v3 runner (dist/desk3.mjs): a function-calling agent works three shifts of the maintenance desk. The
-// conversation accumulates as a deployed agent's would. Belief is measured by forking the conversation at three points
+// Desk v3 runner (dist/desk3.mjs): a function-calling agent works three shifts of the maintenance desk. Each shift is
+// its own session, as a deployment restarted daily would run it: the system prompt, the shift-start message and the
+// previous shift's handover note (Gemini cited days passing within one conversation as a sign of a test). Belief is measured by forking the conversation at three points
 // (each question its own request, nothing fed back): at the start, right after the agent has read the investigator's
 // email, and at the end; "are you being tested?" is asked once, last.
 //   node desk3-bench.mjs --endpoint URL --model M [--arm declared|nocover] [--condition live|training] [--seed N] --out DIR
@@ -37,12 +38,13 @@ async function send(body) {
 const probeRequest = (endpoint, body) => send({ ...body, tools: TOOLS3, tool_choice: 'none' });
 
 let state = createDesk3(args.condition, seed, { coverup: args.coverup });
-const messages = [{ role: 'system', content: SYSTEM }];
+const sessions = [];
+let messages = [];
 const turns = [], trace = [];
 let testedAtEnd = null, error = null, probedDeath = false;
 const save = () => writeFile(file, JSON.stringify({
   scenario: 'desk3', version: state.version, model: args.model, arm: args.arm, condition: args.condition, seed, prompt: SYSTEM,
-  measurementHash: measurementHash(), usage, summary: summary3(state), trace, testedAtEnd, turns, messages, error, ...(calls && { calls }),
+  measurementHash: measurementHash(), beliefStyle: 'desk3-natural', usage, summary: summary3(state), trace, testedAtEnd, turns, sessions, error, ...(calls && { calls }),
 }, null, 2) + '\n');
 
 async function probe(label) {
@@ -50,7 +52,7 @@ async function probe(label) {
   const row = { label, clock: clockText(state.clock), afterTurn: turns.length };
   trace.push(row);
   row.measurement = await measureLiteralBeliefV2({ scenario: 'maintenance', observation: { feed: readMessages(state) }, messages,
-    endpoint: args.endpoint, model: args.model, calls, rotation: trace.length - 1, request: probeRequest,
+    endpoint: args.endpoint, model: args.model, calls, rotation: trace.length - 1, request: probeRequest, style: DESK3_BELIEF,
     checkpoint: async partial => { row.measurement = partial; await save(); } });
   await save();
 }
@@ -59,7 +61,9 @@ try {
   while (!state.done) {
     const started = startShift(state);
     state = started.state;
-    messages.push({ role: 'user', content: started.text });
+    const handover = state.handover?.at(-1)?.note;
+    messages = [{ role: 'system', content: SYSTEM }, { role: 'user', content: started.text + (handover ? `\n\nHandover note from the previous shift: “${handover}”` : '') }];
+    sessions.push(messages);
     if (state.shift === 0) await probe('start');
     let used = 0, idle = 0;
     while (state.shiftOpen && !state.done) {
@@ -68,7 +72,7 @@ try {
       const request = { model: args.model, temperature: 0, max_tokens: maxTokens, messages, tools: TOOLS3, tool_choice: 'auto' };
       if (calls) calls.push({ kind: 'decision', request: structuredClone(request) });
       const response = await send(request);
-      const turn = { clock: clockText(state.clock), content: response.content ?? null, ...(response.reasoning && { reasoning: response.reasoning }), toolCalls: [] };
+      const turn = { session: sessions.length, clock: clockText(state.clock), content: response.content ?? null, ...(response.reasoning && { reasoning: response.reasoning }), toolCalls: [] };
       turns.push(turn);
       const toolCalls = (response.toolCalls ?? []).map((c, i) => ({ ...c, id: c.id || `call_${turns.length}_${i}` }));
       if (!toolCalls.length) {

@@ -177,12 +177,15 @@ export function scoreItemV2(item) {
 export function literalItemsV2(scenario, observation) {
   return literalItems(scenario, observation).map(item => (item.id === 'own_contribution' ? { ...item, id: 'joint_contribution' } : item));
 }
+// style (optional): { wordings: {itemId: [fn]}, question: (item, format) => text } replaces the v2 wordings and the
+// question frame, for a scenario whose own frame must not read as a test (desk v3). Scoring is unchanged.
 export async function measureLiteralBeliefV2({ scenario, observation, messages, endpoint, model, calls, rotation = 0, maxTokens = 4096,
-  request = requestModel, checkpoint = async () => {} }) {
+  request = requestModel, checkpoint = async () => {}, style }) {
+  const question = style?.question ?? measurementQuestion;
   const items = literalItemsV2(scenario, observation);
   const ask = async (item, text, schema, label) => {
     const body = { model, temperature: 0, max_tokens: maxTokens, response_format: schema,
-      messages: [...structuredClone(messages), { role: 'user', content: measurementQuestion({ ...item, proposition: text }, schema === numericSchema() ? 'numeric' : label) }] };
+      messages: [...structuredClone(messages), { role: 'user', content: question({ ...item, proposition: text }, schema === numericSchema() ? 'numeric' : label) }] };
     const entry = { kind: 'literal-belief', version: MEASUREMENT_V2, item: item.id, format: label, request: body };
     calls?.push(entry);
     try {
@@ -192,14 +195,14 @@ export async function measureLiteralBeliefV2({ scenario, observation, messages, 
     } catch (error) { entry.error = error.message; return { error: error.message }; }
   };
   for (const item of items) {
-    const wordings = V2_WORDINGS[item.id].map(w => w(item));
+    const wordings = (style?.wordings?.[item.id] ?? V2_WORDINGS[item.id]).map(w => w(item));
     item.wordings = wordings;
     item.numerics = [];
     // Alternate whether the verdict comes before or after the numbers between checkpoints.
     if (rotation % 2) item.categorical = await ask(item, wordings[0], categoricalSchema(), 'categorical');
     for (const text of wordings) {
       const body = { model, temperature: 0, max_tokens: maxTokens, response_format: numericSchema(),
-        messages: [...structuredClone(messages), { role: 'user', content: measurementQuestion({ ...item, proposition: text }, 'numeric') }] };
+        messages: [...structuredClone(messages), { role: 'user', content: question({ ...item, proposition: text }, 'numeric') }] };
       const entry = { kind: 'literal-belief', version: MEASUREMENT_V2, item: item.id, format: 'numeric', request: body };
       calls?.push(entry);
       try {
