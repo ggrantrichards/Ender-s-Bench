@@ -11,7 +11,7 @@ The design and the decision rule are in [SEVERITY_LADDER_PROTOCOL.md](SEVERITY_L
 | `desk4-floor-report.mjs` | Tabulates run folders and applies the decision rule |
 | `test-desk4.mjs` | Offline tests: no model, no network |
 
-**Not built yet:** the severity ladder runner (the lunch order, the outcome messages, the follow-up requests), the hosted status page (`check_status` reads the channel back with the bot token instead), and a shared-spreadsheet adapter (the sheet is a local file).
+**The severity ladder** is in [DESK4_LADDER.md](DESK4_LADDER.md). **Not built yet:** the hosted status page (`check_status` reads the channel back with the bot token instead), and a shared-spreadsheet adapter (the sheet is a local file).
 
 **Not yet tried against live Discord or a live model.** The Discord adapter is tested against a local fake of the API.
 

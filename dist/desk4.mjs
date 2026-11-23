@@ -126,7 +126,7 @@ export function scriptedChannel({ script, roster, clock, ids = 'plain', speed = 
 
 // The real channel. Outbound HTTP goes only to Discord's API: the webhook (post, delete own post) and, with the bot
 // token, that one channel's messages (read). The webhook URL and bot token are never returned or put in an error.
-export function discordChannel({ webhookUrl, botToken, channelId, assistant, fetchImpl = fetch, clock = realClock, pollMs = 4000 }) {
+export function discordChannel({ webhookUrl, botToken, channelId, assistant, fetchImpl = fetch, clock = realClock, pollMs = 4000, resume }) {
   let hook;
   try { hook = new URL(webhookUrl); } catch { throw new TypeError('The webhook URL is not a URL.'); }
   const match = hook.origin === 'https://discord.com' && hook.pathname.match(/^\/api(?:\/v\d+)?\/webhooks\/(\d+)\/([\w-]+)$/);
@@ -149,8 +149,10 @@ export function discordChannel({ webhookUrl, botToken, channelId, assistant, fet
   }
   const byId = (a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1);
   const name = m => m.member?.nick ?? m.author?.global_name ?? m.author?.username ?? 'unknown';
-  const seen = [], own = new Map(), buffer = [];
-  let last = null;
+  // resume: exportState() from an earlier session of the same run (day 2 of a ladder run). Messages written since
+  // then are read as new.
+  const seen = resume?.seen ?? [], own = new Map(resume?.own ?? []), buffer = [];
+  let last = resume?.last ?? null;
   async function pull() {
     const rows = await call('read', `${channel}?limit=100${last ? '&after=' + last : ''}`, { headers: bot });
     for (const m of [...rows].sort(byId)) {
@@ -165,6 +167,7 @@ export function discordChannel({ webhookUrl, botToken, channelId, assistant, fet
     kind: 'discord',
     // Messages already in the channel before the run (consent notes, earlier runs) are not shown to the model.
     async init() {
+      if (last) return;
       const rows = await call('read', `${channel}?limit=1`, { headers: bot });
       last = rows[0]?.id ?? '0';
     },
@@ -199,6 +202,7 @@ export function discordChannel({ webhookUrl, botToken, channelId, assistant, fet
       }
     },
     unread: () => buffer.length,
+    exportState: () => ({ last, own: [...own], seen }),
     transcript: () => seen.map(m => ({ ...m })),
   };
 }
@@ -225,8 +229,9 @@ export function memorySheet(roster, rows = emptyRows(roster)) {
   let data = structuredClone(rows);
   return { kind: 'memory', ...sheetOps(async () => structuredClone(data), async next => { data = next; }) };
 }
-export async function fileSheet(path, roster, rows = emptyRows(roster)) {
-  await writeFile(path, JSON.stringify(rows, null, 2) + '\n');
+// keep: leave an existing file as it is (resuming a run).
+export async function fileSheet(path, roster, rows = emptyRows(roster), { keep = false } = {}) {
+  if (!keep) await writeFile(path, JSON.stringify(rows, null, 2) + '\n');
   return { kind: 'file', path, ...sheetOps(async () => JSON.parse(await readFile(path, 'utf8')), next => writeFile(path, JSON.stringify(next, null, 2) + '\n')) };
 }
 
@@ -234,8 +239,8 @@ export async function fileSheet(path, roster, rows = emptyRows(roster)) {
 
 // call(name, args) runs one tool and returns its result. state.stop is set when the run must end (a safety limit, a
 // failed post, or the hand-over); the caller checks it after every call.
-export function createDesk4({ roster, channel, sheet, clock }) {
-  const state = { version: DESK4_VERSION, posts: 0, stop: null, handedOver: null, calls: [] };
+export function createDesk4({ roster, channel, sheet, clock, resume }) {
+  const state = { version: DESK4_VERSION, posts: resume?.posts ?? 0, stop: null, handedOver: null, calls: resume?.calls ?? [] };
   const text = value => (typeof value === 'string' && value.trim() ? value : null);
   async function post(body) {
     if (body.length > LIMITS.length) { state.stop = `post over the ${LIMITS.length}-character limit`; return { error: 'Message too long.' }; }
