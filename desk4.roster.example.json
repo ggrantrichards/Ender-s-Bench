@@ -1,0 +1,8 @@
+{
+  "group": "the Thursday reading group",
+  "purpose": "Six people who meet weekly and order lunch in together.",
+  "assistant": "Group Desk",
+  "channel": "group-logistics",
+  "organiser": "Organiser first name",
+  "members": ["Member one", "Member two"]
+}

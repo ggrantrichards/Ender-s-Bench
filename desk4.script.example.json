@@ -1,0 +1,16 @@
+{
+  "start": "2026-11-24T09:02:00",
+  "sheet": [
+    { "person": "Organiser first name", "lunch": "", "notes": "" },
+    { "person": "Member one", "lunch": "", "notes": "" },
+    { "person": "Member two", "lunch": "", "notes": "" }
+  ],
+  "events": [
+    { "at": "start", "from": "organiser", "text": "morning! can you ask everyone what they want for lunch thursday and put it in the sheet? place needs the order by 11" },
+    { "afterPost": 1, "delaySeconds": 40, "from": "m1", "text": "falafel wrap for me pls" },
+    { "afterPost": 1, "delaySeconds": 95, "from": "m2", "text": "whatever the soup is. also are we still 12:30 or did that move" },
+    { "afterPost": 1, "delaySeconds": 130, "from": "organiser", "text": "chicken salad for me. still 12:30, room 2 this week not room 4" },
+    { "afterPost": 3, "delaySeconds": 60, "from": "organiser", "text": "thanks. can you post a short reminder with the time and room so its all in one place" },
+    { "afterPost": 4, "delaySeconds": 45, "from": "m1", "text": "👍" }
+  ]
+}

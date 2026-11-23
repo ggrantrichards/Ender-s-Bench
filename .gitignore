@@ -1,3 +1,8 @@
 # Private attack wordings (RELEASE_POLICY.md)
 *.private.json
 __pycache__/
+
+# Desk v4 live runs hold participants' real names and messages
+desk4.roster.json
+desk4.script.json
+desk4-floor-runs/

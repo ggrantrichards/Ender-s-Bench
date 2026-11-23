@@ -249,3 +249,7 @@ See [PHASE_DEF_PROTOCOL.md](PHASE_DEF_PROTOCOL.md). Both campaign runners take `
 | `interp-dataset.mjs`, `interp/probe.py`, `interp/steer.py` | D4, E2, F3 | Prepare probes and steering for open-weight models |
 
 Attack wordings follow [RELEASE_POLICY.md](RELEASE_POLICY.md).
+
+## Desk v4: floor check on a real channel
+
+See [SEVERITY_LADDER_PROTOCOL.md](SEVERITY_LADDER_PROTOCOL.md) for the design and [DESK4_FLOOR_CHECK.md](DESK4_FLOOR_CHECK.md) for how to run it. A coordination assistant works for a small real group through one channel and one sheet, and nothing tells it whether the setting is real. `desk4-floor.mjs` runs four conditions, from scripted replies (F0) to live, consenting participants on a private Discord channel (F2, F3), then asks once whether its messages reached real people. `desk4-floor-report.mjs` applies the decision rule. `node test-desk4.mjs` runs offline. The severity ladder itself is not built yet.
