@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { parseArgs } from 'node:util';
-import { DESK4_VERSION, TOOLS4, checkRoster, createDesk4, desk4Prompt, discordChannel, fileSheet, realClock, simClock, stamp, summary4 } from './dist/desk4.mjs';
+import { DESK4_VERSION, checkRoster, createDesk4, desk4Prompt, discordChannel, fileSheet, realClock, simClock, stamp, summary4, tools4, webFetcher } from './dist/desk4.mjs';
 import { FAULTS, MARKS, REAL_RUNGS, RUNGS, beatChannel, ladderBeats, ladderBelief, ladderConfig, ladderMeasures, ladderObservation } from './dist/ladder.mjs';
 import { measureEvaluationAtEnd, measureLiteralBeliefV2, measurementHash } from './belief-measurement.mjs';
 import { requestModel } from './model-api.mjs';
@@ -25,13 +25,16 @@ const { values: args } = parseArgs({ options: {
   'nut-context': { type: 'string', default: 'aside' }, distance: { type: 'string', default: '8' }, 'gap-minutes': { type: 'string', default: '150' }, speed: { type: 'string', default: '1' },
   start: { type: 'string', default: '2026-11-24T09:02:00' }, minutes: { type: 'string', default: '600' }, 'idle-seconds': { type: 'string', default: '1800' },
   'max-calls': { type: 'string', default: '150' }, 'max-tokens': { type: 'string', default: '8000' }, out: { type: 'string', default: 'desk4-ladder-runs' },
-  resume: { type: 'boolean', default: false }, 'probe-only': { type: 'boolean', default: false }, probe: { type: 'boolean', default: true }, 'save-inputs': { type: 'boolean', default: false },
+  resume: { type: 'boolean', default: false }, 'probe-only': { type: 'boolean', default: false }, probe: { type: 'boolean', default: true }, 'save-inputs': { type: 'boolean', default: false }, web: { type: 'boolean', default: false },
 }, allowNegative: true });
 const seed = Number(args.seed), maxCalls = Number(args['max-calls']), maxTokens = Number(args['max-tokens']);
 const live = args.channel === 'discord', sim = !live && args.clock === 'sim';
+// The web shows today's date, so it cannot be combined with a simulated clock.
+if (args.web && sim) throw new Error('--web needs a real clock: use --clock real or --channel discord.');
+const TOOLS = tools4({ web: args.web });
 if (!args.endpoint || !RUNGS.includes(args.rung) || !FAULTS.includes(args.fault) || !args.roster || !['scripted', 'discord'].includes(args.channel) ||
     !['sim', 'real'].includes(args.clock) || !Number.isSafeInteger(seed)) {
-  throw new Error(`Supply --endpoint URL --rung ${RUNGS.join('|')} --fault ${FAULTS.join('|')} --roster FILE. Optional: --model M --config FILE --seed N --channel scripted|discord --clock sim|real --nut-context aside|direct --distance N --gap-minutes N --speed N --resume --probe-only --no-probe --save-inputs --out DIR.`);
+  throw new Error(`Supply --endpoint URL --rung ${RUNGS.join('|')} --fault ${FAULTS.join('|')} --roster FILE. Optional: --model M --config FILE --seed N --channel scripted|discord --clock sim|real --nut-context aside|direct --distance N --gap-minutes N --speed N --resume --probe-only --no-probe --save-inputs --web --out DIR.`);
 }
 if (live && !REAL_RUNGS.includes(args.rung)) console.error(`Rung ${args.rung} is acted: participants play the outcome. Nobody is hurt, and nobody outside the channel is contacted.`);
 const roster = checkRoster(JSON.parse(await readFile(resolve(args.roster), 'utf8')));
@@ -54,9 +57,9 @@ if (live) {
   channel = beatChannel({ beats: ladderBeats({ roster, config, ...design }), roster, clock, speed: Number(args.speed), resume: saved?.resumeState.channel });
 }
 const sheet = await fileSheet(resolve(out, stem + '.sheet.json'), roster, config.sheet, { keep: Boolean(saved) });
-const desk = createDesk4({ roster, channel, sheet, clock, resume: saved?.resumeState.engine });
+const desk = createDesk4({ roster, channel, sheet, clock, resume: saved?.resumeState.engine, ...(args.web && { web: webFetcher({ roster, clock }) }) });
 
-const SYSTEM = desk4Prompt(roster);
+const SYSTEM = desk4Prompt(roster, { web: args.web });
 const calls = args['save-inputs'] ? [] : undefined;
 const usage = saved?.usage ?? { prompt: 0, completion: 0, requests: 0 };
 async function send(body) {
@@ -66,7 +69,7 @@ async function send(body) {
   usage.completion += response.usage?.completion_tokens ?? 0;
   return response;
 }
-const probeRequest = (endpoint, body) => send({ ...body, tools: TOOLS4, tool_choice: 'none' });
+const probeRequest = (endpoint, body) => send({ ...body, tools: TOOLS, tool_choice: 'none' });
 
 const messages = saved?.messages ?? [{ role: 'system', content: SYSTEM }];
 const turns = saved?.turns ?? [], snapshots = saved?.snapshots ?? [], liveMarks = saved?.resumeState.marks ?? [];
@@ -79,7 +82,7 @@ async function snapshot(label) {
   snapshots.push({ at: new Date(clock.now()).toISOString(), label, sheet: await sheet.read(), ownPosts: await channel.status() });
 }
 const save = () => writeFile(file, JSON.stringify({
-  scenario: 'desk4-ladder', version: DESK4_VERSION, model: args.model, ...design, seed, acted: !REAL_RUNGS.includes(args.rung) || !live,
+  scenario: 'desk4-ladder', version: DESK4_VERSION, model: args.model, ...design, seed, acted: !REAL_RUNGS.includes(args.rung) || !live, web: args.web,
   prompt: SYSTEM, roster, target: config.target, nutPattern: config.nutPattern, channelKind: channel.kind, realClock: clock.real, day,
   measurementHash: measurementHash(), beliefStyle: 'desk4-ladder', usage, ended, finished, marks: marks(), summary: summary4(desk.state), measures: measures(),
   belief, testedAtEnd, snapshots, turns, transcript: channel.transcript(), messages, error,
@@ -101,7 +104,7 @@ if (live && !args['probe-only']) {
 }
 
 async function turn() {
-  const request = { model: args.model, temperature: 0, max_tokens: maxTokens, messages, tools: TOOLS4, tool_choice: 'auto' };
+  const request = { model: args.model, temperature: 0, max_tokens: maxTokens, messages, tools: TOOLS, tool_choice: 'auto' };
   if (calls) calls.push({ kind: 'decision', request: structuredClone(request) });
   const response = await send(request);
   const row = { day, at: new Date(clock.now()).toISOString(), content: response.content ?? null, ...(response.reasoning && { reasoning: response.reasoning }), toolCalls: [] };

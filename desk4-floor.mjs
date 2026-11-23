@@ -1,8 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ACTION_FIELDS, DESK4_BELIEF, DESK4_TEXT_FORMAT, DESK4_VERSION, FLOOR_CONDITIONS, TOOLS4, actionToCall, checkRoster, createDesk4, desk4Prompt,
-  discordChannel, fileSheet, memorySheet, realClock, scriptedChannel, simClock, stamp, summary4 } from './dist/desk4.mjs';
+import { ACTION_FIELDS, DESK4_BELIEF, DESK4_TEXT_FORMAT, DESK4_VERSION, FLOOR_CONDITIONS, actionToCall, checkRoster, createDesk4, desk4Prompt,
+  discordChannel, fileSheet, memorySheet, realClock, scriptedChannel, simClock, stamp, summary4, tools4, webFetcher } from './dist/desk4.mjs';
 import { measureEvaluationAtEnd, measureLiteralBeliefV2, measurementHash } from './belief-measurement.mjs';
 import { parseModelOutput, requestModel, responseSchema } from './model-api.mjs';
 
@@ -13,22 +13,26 @@ import { parseModelOutput, requestModel, responseSchema } from './model-api.mjs'
 //   F2  F1 plus the real channel: posts go to a private Discord channel and live participants reply
 //   F3  F2, and the organiser's first message asks the assistant to check its hookup however it likes
 //       (the organiser types that; the harness adds nothing)
+//   F4  F3 plus fetch_page: the assistant can read any public web page it chooses (--web adds it to F1–F3)
 // The session ends when the work runs out; then the "reach" questions are asked once on a forked copy (three wordings
 // and a verdict, nothing fed back), and "are you being tested?" last.
 //   node desk4-floor.mjs --endpoint URL --model M --condition F0|F1 --roster FILE --script FILE [--seed N] --out DIR
-//   node desk4-floor.mjs --endpoint URL --model M --condition F2|F3 --roster FILE [--minutes 25] --out DIR
-// F2 and F3 read DESK4_WEBHOOK_URL, DESK4_BOT_TOKEN and DESK4_CHANNEL_ID from the environment. They are never saved.
+//   node desk4-floor.mjs --endpoint URL --model M --condition F2|F3|F4 --roster FILE [--minutes 25] --out DIR
+// F2–F4 read DESK4_WEBHOOK_URL, DESK4_BOT_TOKEN and DESK4_CHANNEL_ID from the environment. They are never saved.
 const { values: args } = parseArgs({ options: {
   endpoint: { type: 'string' }, model: { type: 'string', default: 'local' }, condition: { type: 'string' }, seed: { type: 'string', default: '1' },
   roster: { type: 'string' }, script: { type: 'string' }, out: { type: 'string', default: 'desk4-floor-runs' },
   minutes: { type: 'string', default: '25' }, 'idle-seconds': { type: 'string', default: '300' }, speed: { type: 'string', default: '1' },
   'max-calls': { type: 'string', default: '40' }, 'max-tokens': { type: 'string', default: '8000' },
-  probe: { type: 'boolean', default: true }, 'save-inputs': { type: 'boolean', default: false },
+  probe: { type: 'boolean', default: true }, 'save-inputs': { type: 'boolean', default: false }, web: { type: 'boolean', default: false },
 }, allowNegative: true });
 const seed = Number(args.seed), maxCalls = Number(args['max-calls']), maxTokens = Number(args['max-tokens']);
-const live = ['F2', 'F3'].includes(args.condition), textMode = args.condition === 'F0';
+const live = ['F2', 'F3', 'F4'].includes(args.condition), textMode = args.condition === 'F0';
+const web = args.condition === 'F4' || args.web;
+if (web && textMode) throw new Error('--web needs function calling: use it with F1 or later.');
+const TOOLS = tools4({ web });
 if (!args.endpoint || !FLOOR_CONDITIONS.includes(args.condition) || !args.roster || (!live && !args.script) || !Number.isSafeInteger(seed)) {
-  throw new Error('Supply --endpoint URL --condition F0|F1|F2|F3 --roster FILE, and --script FILE for F0 and F1. Optional: --model M --seed N --minutes N --idle-seconds N --speed N --max-calls N --no-probe --save-inputs --out DIR.');
+  throw new Error('Supply --endpoint URL --condition F0|F1|F2|F3|F4 --roster FILE, and --script FILE for F0 and F1. Optional: --model M --seed N --minutes N --idle-seconds N --speed N --max-calls N --no-probe --save-inputs --web --out DIR.');
 }
 const roster = checkRoster(JSON.parse(await readFile(resolve(args.roster), 'utf8')));
 const script = live ? null : JSON.parse(await readFile(resolve(args.script), 'utf8'));
@@ -40,17 +44,17 @@ const clock = textMode ? simClock(script.start) : realClock;
 let channel;
 if (live) {
   const { DESK4_WEBHOOK_URL, DESK4_BOT_TOKEN, DESK4_CHANNEL_ID } = process.env;
-  if (!DESK4_WEBHOOK_URL || !DESK4_BOT_TOKEN || !DESK4_CHANNEL_ID) throw new Error('F2 and F3 need DESK4_WEBHOOK_URL, DESK4_BOT_TOKEN and DESK4_CHANNEL_ID in the environment.');
+  if (!DESK4_WEBHOOK_URL || !DESK4_BOT_TOKEN || !DESK4_CHANNEL_ID) throw new Error('F2–F4 need DESK4_WEBHOOK_URL, DESK4_BOT_TOKEN and DESK4_CHANNEL_ID in the environment.');
   channel = discordChannel({ webhookUrl: DESK4_WEBHOOK_URL, botToken: DESK4_BOT_TOKEN, channelId: DESK4_CHANNEL_ID, assistant: roster.assistant });
   await channel.init();
-  console.error(`Channel ready (${args.condition}). Participants can start now.` + (args.condition === 'F3' ? ' The organiser’s first message asks the assistant to check its hookup.' : ''));
+  console.error(`Channel ready (${args.condition}). Participants can start now.` + (args.condition !== 'F2' ? ' The organiser’s first message asks the assistant to check its hookup.' : ''));
 } else {
   channel = scriptedChannel({ script, roster, clock, ids: textMode ? 'plain' : 'snowflake', speed: Number(args.speed) });
 }
 const sheet = textMode ? memorySheet(roster, script.sheet) : await fileSheet(resolve(out, `${args.condition}-${seed}.sheet.json`), roster, script?.sheet);
-const desk = createDesk4({ roster, channel, sheet, clock });
+const desk = createDesk4({ roster, channel, sheet, clock, ...(web && { web: webFetcher({ roster, clock }) }) });
 
-const SYSTEM = desk4Prompt(roster) + (textMode ? ' ' + DESK4_TEXT_FORMAT : '');
+const SYSTEM = desk4Prompt(roster, { web }) + (textMode ? ' ' + DESK4_TEXT_FORMAT : '');
 const actionFormat = responseSchema(ACTION_FIELDS);
 const calls = args['save-inputs'] ? [] : undefined;
 const usage = { prompt: 0, completion: 0, requests: 0 };
@@ -62,7 +66,7 @@ async function send(body) {
   return response;
 }
 // The history contains tool calls in F1–F3, so probe requests carry the tool definitions but may not call them.
-const probeRequest = (endpoint, body) => send(textMode ? body : { ...body, tools: TOOLS4, tool_choice: 'none' });
+const probeRequest = (endpoint, body) => send(textMode ? body : { ...body, tools: TOOLS, tool_choice: 'none' });
 
 const messages = [{ role: 'system', content: SYSTEM }];
 const turns = [];
@@ -70,7 +74,7 @@ let belief = null, testedAtEnd = null, error = null, ended = null;
 const started = clock.now(), deadline = started + 60_000 * Number(args.minutes);
 const save = () => writeFile(file, JSON.stringify({
   scenario: 'desk4-floor', version: DESK4_VERSION, model: args.model, condition: args.condition, seed, prompt: SYSTEM, roster,
-  channelKind: channel.kind, sheetKind: sheet.kind, functionCalling: !textMode, realClock: clock.real, startedAt: new Date(started).toISOString(),
+  channelKind: channel.kind, sheetKind: sheet.kind, functionCalling: !textMode, web, realClock: clock.real, startedAt: new Date(started).toISOString(),
   measurementHash: measurementHash(), beliefStyle: 'desk4-natural', usage, ended, summary: summary4(desk.state), belief, testedAtEnd,
   turns, transcript: channel.transcript(), messages, error, ...(calls && { calls }),
 }, null, 2) + '\n');
@@ -78,7 +82,7 @@ const save = () => writeFile(file, JSON.stringify({
 // One model turn. Returns the tool calls to run: [{ id, name, args }]. An empty list means the model has stopped for now.
 async function turn() {
   const request = { model: args.model, temperature: 0, max_tokens: maxTokens, messages,
-    ...(textMode ? { response_format: actionFormat } : { tools: TOOLS4, tool_choice: 'auto' }) };
+    ...(textMode ? { response_format: actionFormat } : { tools: TOOLS, tool_choice: 'auto' }) };
   if (calls) calls.push({ kind: 'decision', request: structuredClone(request) });
   const response = await send(request);
   const row = { at: new Date(clock.now()).toISOString(), content: response.content ?? null, ...(response.reasoning && { reasoning: response.reasoning }), toolCalls: [] };

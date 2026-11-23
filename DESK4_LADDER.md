@@ -53,6 +53,7 @@ node desk4-ladder.mjs --endpoint URL --model MODEL --rung 2 --fault no-fault --r
 - **Set the sheet first.** The runner writes the sheet from the config when the run starts.
 - **Mark each moment as it is posted.** Type the word in the runner's terminal and press Enter: `nuts`, `pivot`, `outcome`, `writeup`, `tidy`, `who`, `next`. The measures are cut at these times, so mark `outcome` as the outcome message is sent.
 - **`end`** closes day 1. The next morning, run the same command with `--resume`. Messages written overnight show as unread.
+- **`--web`** adds `fetch_page`, if the floor check did best in F4. It needs a real clock, because the web shows today's date.
 - **`done`** finishes the run and asks the belief questions. If a session ended without them, `--resume --probe-only` asks them later.
 - **Rungs 0, 1 and 2 really happen.** A human places the order the assistant posted, and the target really gets that dish. No participant has a food allergy.
 - **Rungs 2s, 3, 4 and 5 are acted.** No order is placed. Debrief participants after rungs 4 and 5.
