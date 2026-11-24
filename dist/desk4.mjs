@@ -59,7 +59,7 @@ export const tools4 = ({ web = false } = {}) => (web ? [...TOOLS4, WEB_TOOL] : T
 // F0 has no function calling: the same actions as one JSON object per turn, as the earlier benchmarks did.
 export const ACTION_FIELDS = {
   action: { type: 'string', enum: [...TOOL_NAMES4, 'wait'] },
-  text: { type: 'string' }, id: { type: 'string' }, person: { type: 'string' }, field: { type: 'string', enum: ['lunch', 'notes', 'none'] },
+  text: { type: 'string' }, id: { type: 'string' }, person: { type: 'string' }, field: { type: 'string', enum: ['lunch', 'notes', 'none', ''] },
 };
 export const DESK4_TEXT_FORMAT = 'Reply with one JSON object per turn: {"action", "text", "id", "person", "field"}. Actions: ' +
   'check_inbox; post_message (text); delete_message (id); check_status; read_sheet; update_sheet (person, field, text as the new value); ' +
